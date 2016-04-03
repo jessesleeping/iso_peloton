@@ -884,6 +884,104 @@ pg_plan_queries(List *querytrees, int cursorOptions, ParamListInfo boundParams)
   return stmt_list;
 }
 
+/*
+ * Generate a plan for a single already-rewritten query.
+ * This is a thin wrapper around planner() and takes the same parameters.
+ */
+PlannedStmt *
+peloton_plan_query(Query *querytree,
+                   int cursorOptions,
+                   ParamListInfo boundParams)
+{
+  PlannedStmt *plan;
+
+  /* Utility commands have no plans. */
+  if (querytree->commandType == CMD_UTILITY)
+    return NULL;
+
+  /* Planner must have a snapshot in case it calls user-defined functions. */
+  Assert(ActiveSnapshotSet());
+
+  TRACE_POSTGRESQL_QUERY_PLAN_START();
+
+  if (log_planner_stats)
+    ResetUsage();
+
+  /* call the optimizer */
+  plan = planner(querytree, cursorOptions, boundParams);
+
+  // TODO: Peloton Changes
+  /* figure out if catalog query or user query */
+  plan->pelotonQuery = IsPelotonQuery(plan->relationOids);
+  elog(DEBUG1, "Peloton query : %d \n", plan->pelotonQuery);
+
+  if (log_planner_stats)
+    ShowUsage("PLANNER STATISTICS");
+
+#ifdef COPY_PARSE_PLAN_TREES
+  /* Optional debugging check: pass plan output through copyObject() */
+  {
+    PlannedStmt *new_plan = (PlannedStmt *) copyObject(plan);
+
+    /*
+     * equal() currently does not have routines to compare Plan nodes, so
+     * don't try to test equality here.  Perhaps fix someday?
+     */
+#ifdef NOT_USED
+    /* This checks both copyObject() and the equal() routines... */
+    if (!equal(new_plan, plan))
+      elog(WARNING, "copyObject() failed to produce an equal plan tree");
+    else
+#endif
+      plan = new_plan;
+  }
+#endif
+
+  /*
+   * Print plan if debugging.
+   */
+  if (Debug_print_plan)
+    elog_node_display(LOG, "plan", plan, Debug_pretty_print);
+
+  TRACE_POSTGRESQL_QUERY_PLAN_DONE();
+
+  return plan;
+}
+
+/*
+ * Generate plans for a list of already-rewritten queries.
+ *
+ * Normal optimizable statements generate PlannedStmt entries in the result
+ * list.  Utility statements are simply represented by their statement nodes.
+ */
+List *
+peloton_plan_queries(List *querytrees,
+                     int cursorOptions,
+                     ParamListInfo boundParams)
+{
+  List	   *stmt_list = NIL;
+  ListCell   *query_list;
+
+  foreach(query_list, querytrees)
+  {
+    Query	   *query = (Query *) lfirst(query_list);
+    Node	   *stmt;
+
+    if (query->commandType == CMD_UTILITY)
+    {
+      /* Utility commands have no plans. */
+      stmt = query->utilityStmt;
+    }
+    else
+    {
+      stmt = (Node *) peloton_plan_query(query, cursorOptions, boundParams);
+    }
+
+    stmt_list = lappend(stmt_list, stmt);
+  }
+
+  return stmt_list;
+}
 
 /*
  * exec_simple_query
@@ -1039,7 +1137,11 @@ exec_simple_query(const char *query_string)
     querytree_list = pg_analyze_and_rewrite(parsetree, query_string,
                                             NULL, 0);
 
+#ifdef PELOTON_OPTIMIZER
+    plantree_list = peloton_plan_queries(querytree_list, 0, NULL);
+#else
     plantree_list = pg_plan_queries(querytree_list, 0, NULL);
+#endif
 
     /* Done with the snapshot used for parsing/planning */
     if (snapshot_set)

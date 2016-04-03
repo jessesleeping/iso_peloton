@@ -57,6 +57,10 @@ extern PlannedStmt *pg_plan_query(Query *querytree, int cursorOptions,
 			  ParamListInfo boundParams);
 extern List *pg_plan_queries(List *querytrees, int cursorOptions,
 				ParamListInfo boundParams);
+extern List *peloton_plan_query(List *querytrees, int cursorOptions,
+				ParamListInfo boundParams);
+extern List *peloton_plan_queries(List *querytrees, int cursorOptions,
+				ParamListInfo boundParams);
 
 extern bool check_max_stack_depth(int *newval, void **extra, GucSource source);
 extern void assign_max_stack_depth(int newval, void *extra);
