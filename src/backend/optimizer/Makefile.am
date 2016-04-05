@@ -5,7 +5,7 @@
 ######################################################################
 
 optimizer_FILES = \
-				backend/optimizer/optimizer.cppp
+				backend/optimizer/optimizer.cpp
 
 optimizer_INCLUDES = \
 				   -I$(srcdir)/backend/optimizer

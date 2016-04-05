@@ -356,4 +356,3 @@ bool IsPelotonQuery(List *relationOids) {
 
   return peloton_query;
 }
-

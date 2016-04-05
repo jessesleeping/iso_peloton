@@ -12,9 +12,24 @@
 
 #pragma once
 
+#include "backend/optimizer/query_tree.h"
+#include "backend/planner/abstract_plan.h"
+#include "backend/common/logger.h"
+
+#include "postgres.h"
+#include "nodes/nodes.h"
+#include "nodes/parsenodes.h"
+#include "nodes/plannodes.h"
+#include "nodes/params.h"
+
+#include <memory>
+
 namespace peloton {
 namespace optimizer {
 
+//===--------------------------------------------------------------------===//
+// Optimizer
+//===--------------------------------------------------------------------===//
 class Optimizer {
  public:
   Optimizer(const Optimizer &) = delete;
@@ -26,10 +41,20 @@ class Optimizer {
 
   static Optimizer &GetInstance();
 
-  planner::AbstractPlan* GeneratePlan(Query *parse,
-                                      int cursorOptions,
-                                      ParamListInfo boundParams);
-}
+  std::shared_ptr<planner::AbstractPlan> GeneratePlan(
+    std::shared_ptr<QueryTree> query_tree);
+};
+
+//===--------------------------------------------------------------------===//
+// Compatibility with Postgres
+//===--------------------------------------------------------------------===//
+bool ShouldPelotonOptimize(Query *parse);
+
+PlannedStmt* PelotonOptimize(Optimizer &optimizer,
+                             Query *parse,
+                             int cursorOptions,
+                             ParamListInfo boundParams);
+
 
 } /* namespace optimizer */
 } /* namespace peloton */

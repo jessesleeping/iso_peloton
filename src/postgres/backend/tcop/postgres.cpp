@@ -79,6 +79,7 @@
 #include "utils/memutils.h"
 
 // TODO: Peloton Changes
+#include "backend/optimizer/optimizer.h"
 #include "backend/logging/log_manager.h"
 
 
@@ -893,7 +894,7 @@ peloton_plan_query(Query *querytree,
                    int cursorOptions,
                    ParamListInfo boundParams)
 {
-  PlannedStmt *plan;
+  PlannedStmt *plan = nullptr;
 
   /* Utility commands have no plans. */
   if (querytree->commandType == CMD_UTILITY)
@@ -907,12 +908,29 @@ peloton_plan_query(Query *querytree,
   if (log_planner_stats)
     ResetUsage();
 
-  /* call the optimizer */
-  plan = planner(querytree, cursorOptions, boundParams);
 
-  // TODO: Peloton Changes
-  /* figure out if catalog query or user query */
-  plan->pelotonQuery = IsPelotonQuery(plan->relationOids);
+  if (peloton::optimizer::ShouldPelotonOptimize(querytree)) {
+    peloton::optimizer::Optimizer& optimizer =
+      peloton::optimizer::Optimizer::GetInstance();
+    /* call the optimizer */
+    plan = peloton::optimizer::PelotonOptimize(optimizer,
+                                               querytree,
+                                               cursorOptions,
+                                               boundParams);
+  }
+  /*
+   * Fall back to postgres optimizer if Peloton optimizer
+   * does not return a plan.
+   */
+  if (plan == nullptr) {
+    /* call the optimizer */
+    plan = planner(querytree, cursorOptions, boundParams);
+
+    // TODO: Peloton Changes
+    /* figure out if catalog query or user query */
+    plan->pelotonQuery = IsPelotonQuery(plan->relationOids);
+    plan->pelotonOptimized = false;
+  }
   elog(DEBUG1, "Peloton query : %d \n", plan->pelotonQuery);
 
   if (log_planner_stats)

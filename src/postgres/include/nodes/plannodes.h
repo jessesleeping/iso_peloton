@@ -73,6 +73,8 @@ typedef struct PlannedStmt
 	bool		hasRowSecurity; /* row security applied? */
 
 	bool    pelotonQuery;  /* peloton query i.e. accesses peloton tables ? */
+
+	bool    pelotonOptimized;  /* peloton optimized */
 } PlannedStmt;
 
 /* macro for fetching the Plan associated with a SubPlan node */

@@ -23,6 +23,7 @@ include $(srcdir)/backend/expression/Makefile.am
 include $(srcdir)/backend/index/Makefile.am
 include $(srcdir)/backend/main/Makefile.am
 include $(srcdir)/backend/networking/Makefile.am
+include $(srcdir)/backend/optimizer/Makefile.am
 include $(srcdir)/backend/planner/Makefile.am
 include $(srcdir)/backend/storage/Makefile.am
 include $(srcdir)/backend/logging/Makefile.am
@@ -62,6 +63,7 @@ libpeloton_la_SOURCES = \
 			$(executor_FILES) \
 			$(index_FILES) \
 			$(networking_FILES) \
+			$(optimizer_FILES) \
 			$(planner_FILES) \
 			$(storage_FILES) \
 			$(logging_FILES)
