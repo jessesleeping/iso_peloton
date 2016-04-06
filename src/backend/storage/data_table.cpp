@@ -1030,14 +1030,31 @@ void DataTable::SampleRows(size_t sample_size) {
     samples_for_optimizer.clear();
   }
 
-  // Reserve sample_size space to reduce extra overhead for expanding
-  std::vector<oid_t> row_id_list{sample_size};
+  // We want to make it ordered, and also want to detect for duplicates
+  // so use a RB-Tree based ordered set
+  std::set<oid_t> row_id_set{};
+
+  // Get tile group count and tuple count
+  // Not pretty sure why it returns a float...
+  size_t total_tuple_number = (size_t)GetNumberOfTuples();
+  size_t total_tile_group_number = (size_t)GetTileGroupCount();
 
   // I copied this from the Internet...
   std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dis(0, );
+  std::mt19937 generator(rd());
 
+  // This is inclusive, [0, total_tuple_number - 1]
+  std::uniform_int_distribution<> distribution(0, total_tuple_number - 1);
+
+  // outer loop detect whether there are duplicates
+  while(row_id_set.size() < sample_size) {
+    // Inner loop generates random numbers and insert into
+    // the ordered set
+    for(size_t i = 0;i < sample_size;i++) {
+      row_id_set.insert(distribution(generator));
+    }
+  }
+  (void) total_tile_group_number;
   return;
 }
 
