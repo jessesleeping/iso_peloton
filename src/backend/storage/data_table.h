@@ -187,6 +187,12 @@ class DataTable : public AbstractTable {
   void UpdateDefaultPartition();
 
   //===--------------------------------------------------------------------===//
+  // Query Optimizer Interface
+  //===--------------------------------------------------------------------===//
+
+  void SampleRows(size_t sample_size);
+
+  //===--------------------------------------------------------------------===//
   // UTILITIES
   //===--------------------------------------------------------------------===//
 
@@ -276,6 +282,9 @@ class DataTable : public AbstractTable {
 
   // samples for clustering
   std::vector<brain::Sample> samples;
+
+  // Samples of table rows to do statistics
+  std::vector<ItemPointer> sample_for_stat;
 };
 
 }  // End storage namespace
