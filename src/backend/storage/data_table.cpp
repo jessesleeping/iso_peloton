@@ -1013,8 +1013,32 @@ column_map_type DataTable::GetStaticColumnMap(const std::string &table_name,
 // Query Optimizer Interface
 //===--------------------------------------------------------------------===//
 
+/*
+ * SampleRows() - This function samples rows in the physical table
+ *
+ * Since random number generating is a relatively expensive process, we
+ * buffer the result in member "sample_for_optimizer" as ItemPointer vector
+ * in order to reuse them for a different column next time
+ */
 void DataTable::SampleRows(size_t sample_size) {
-  (void)sample_size;
+  LOG_TRACE("Start a new sampling, size = %lu ", sample_size);
+
+  if(samples_for_optimizer.size() != 0) {
+    LOG_TRACE("Previous sample size not 0. Clear! ");
+
+    // Clear previous sample results, if there is one
+    samples_for_optimizer.clear();
+  }
+
+  // Reserve sample_size space to reduce extra overhead for expanding
+  std::vector<oid_t> row_id_list{sample_size};
+
+  // I copied this from the Internet...
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, );
+
+  return;
 }
 
 }  // End storage namespace

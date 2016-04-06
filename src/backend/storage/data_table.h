@@ -284,7 +284,7 @@ class DataTable : public AbstractTable {
   std::vector<brain::Sample> samples;
 
   // Samples of table rows to do statistics
-  std::vector<ItemPointer> sample_for_stat;
+  std::vector<ItemPointer> samples_for_optimizer;
 };
 
 }  // End storage namespace
