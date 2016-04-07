@@ -26,12 +26,12 @@ class Select;
 
 class OperatorVisitor {
  public:
-  virtual ~OperatorVisitor();
+  virtual ~OperatorVisitor() {};
 
-  virtual void visit(const TableAttribute*);
-  virtual void visit(const Table*);
-  virtual void visit(const OrderBy*);
-  virtual void visit(const Select*);
+  virtual void visit(const TableAttribute*) = 0;
+  virtual void visit(const Table*) = 0;
+  virtual void visit(const OrderBy*) = 0;
+  virtual void visit(const Select*) = 0;
 };
 
 } /* namespace optimizer */
