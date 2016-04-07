@@ -171,7 +171,7 @@ ItemPointer DataTable::GetTupleSlot(const storage::Tuple *tuple,
     tile_group = GetTileGroup(tile_group_offset);
 
     tuple_slot = tile_group->InsertTuple(tuple);
-    //tile_group_id = tile_group->GetTileGroupId();
+    tile_group_id = tile_group->GetTileGroupId();
 
     if (tuple_slot == INVALID_OID) {
       // XXX Should we put this in a critical section?
