@@ -2,34 +2,37 @@
 //
 //                         Peloton
 //
-// optimizer.cpp
+// operator_visitor.h
 //
-// Identification: src/backend/optimizer/optimizer.cpp
+// Identification: src/backend/optimizer/operator_visitor.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#include "backend/optimizer/optimizer.h"
+#pragma once
 
 namespace peloton {
 namespace optimizer {
 
-//===--------------------------------------------------------------------===//
-// Optimizer
-//===--------------------------------------------------------------------===//
-Optimizer &Optimizer::GetInstance()
-{
-  thread_local static Optimizer optimizer;
-  return optimizer;
-}
+class TableAttribute;
+class Table;
+class OrderBy;
+class Select;
 
-std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
-  std::shared_ptr<Select> select_tree)
-{
-  (void)select_tree;
-  return nullptr;
-}
+//===--------------------------------------------------------------------===//
+// Operator Visitor
+//===--------------------------------------------------------------------===//
 
-}  // namespace optimizer
-}  // namespace peloton
+class OperatorVisitor {
+ public:
+  virtual ~OperatorVisitor();
+
+  virtual void visit(const TableAttribute*);
+  virtual void visit(const Table*);
+  virtual void visit(const OrderBy*);
+  virtual void visit(const Select*);
+};
+
+} /* namespace optimizer */
+} /* namespace peloton */

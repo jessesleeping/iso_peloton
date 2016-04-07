@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// optimizer.h
+// postgres_shim.h
 //
-// Identification: src/backend/optimizer/optimizer.h
+// Identification: src/backend/optimizer/postgres_shim.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -12,32 +12,29 @@
 
 #pragma once
 
+#include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/query_operators.h"
-#include "backend/planner/abstract_plan.h"
-#include "backend/common/logger.h"
 
-#include <memory>
+#include "nodes/nodes.h"
+#include "nodes/parsenodes.h"
+#include "nodes/plannodes.h"
+#include "nodes/params.h"
 
 namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
-// Optimizer
+// Compatibility with Postgres
 //===--------------------------------------------------------------------===//
-class Optimizer {
- public:
-  Optimizer(const Optimizer &) = delete;
-  Optimizer &operator=(const Optimizer &) = delete;
-  Optimizer(Optimizer &&) = delete;
-  Optimizer &operator=(Optimizer &&) = delete;
 
-  Optimizer() {};
+bool ShouldPelotonOptimize(Query *parse);
 
-  static Optimizer &GetInstance();
+std::shared_ptr<Select> PostgresQueryToPelotonQuery(Query *parse);
 
-  std::shared_ptr<planner::AbstractPlan> GeneratePlan(
-    std::shared_ptr<Select> select_tree);
-};
+PlannedStmt* PelotonOptimize(Optimizer &optimizer,
+                             Query *parse,
+                             int cursorOptions,
+                             ParamListInfo boundParams);
 
 } /* namespace optimizer */
 } /* namespace peloton */

@@ -5,7 +5,10 @@
 ######################################################################
 
 optimizer_FILES = \
-				backend/optimizer/optimizer.cpp
+				backend/optimizer/postgres_shim.cpp \
+				backend/optimizer/optimizer.cpp \
+				backend/optimizer/operator_node.cpp \
+				backend/optimizer/query_operators.cpp
 
 optimizer_INCLUDES = \
 				   -I$(srcdir)/backend/optimizer
