@@ -125,7 +125,10 @@ class DataTable : public AbstractTable {
   size_t GetTileGroupCount() const;
 
   // Get a tile group with given layout
-  TileGroup *GetTileGroupWithLayout(const column_map_type &partitioning);
+  // Ziqi: We also have a choice to override the default tile group size
+  TileGroup *GetTileGroupWithLayout(const column_map_type &partitioning,
+                                    size_t override_tuples_per_tilegroup,
+                                    bool override_tile_group_size);
 
   //===--------------------------------------------------------------------===//
   // INDEX
@@ -260,7 +263,7 @@ class DataTable : public AbstractTable {
 
   // An extra tile group which is used to hold sampling for optimizers
   // TODO: Finer grained, tile based sampling
-  oid_t sampled_tile_group;
+  oid_t sampled_tile_group_id;
 
   // INDEXES
   std::vector<index::Index *> indexes;

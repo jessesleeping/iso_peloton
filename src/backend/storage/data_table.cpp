@@ -59,7 +59,7 @@ DataTable::DataTable(catalog::Schema *schema, const std::string &table_name,
                      const bool adapt_table)
     : AbstractTable(database_oid, table_oid, table_name, schema, own_schema),
       tuples_per_tilegroup(tuples_per_tilegroup),
-      sampled_tile_group{INVALID_OID},
+      sampled_tile_group_id{INVALID_OID},
       adapt_table(adapt_table) {
   // Init default partition
   auto col_count = schema->GetColumnCount();
@@ -81,8 +81,8 @@ DataTable::~DataTable() {
   }
 
   // Also if there is a sampling tile group drop it
-  if(sampled_tile_group != INVALID_OID) {
-    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group);
+  if(sampled_tile_group_id != INVALID_OID) {
+    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group_id);
   }
 
   // clean up indices
@@ -450,8 +450,18 @@ void DataTable::ResetDirty() { dirty = false; }
 // TILE GROUP
 //===--------------------------------------------------------------------===//
 
+/*
+ * GetTileGroupWithLayout() - Return a tile group of some specified layout
+ *
+ * This function allocates memory for a tile group, which needs to be freed
+ * implicitly by shared pointer when droping the tile group
+ *
+ * NOTE: This function has an option to override
+ */
 TileGroup *DataTable::GetTileGroupWithLayout(
-    const column_map_type &partitioning) {
+    const column_map_type &partitioning,
+    size_t override_tuples_per_tilegroup = 0,
+    bool override_tile_group_size = false) {
   std::vector<catalog::Schema> schemas;
   oid_t tile_group_id = INVALID_OID;
 
@@ -484,8 +494,13 @@ TileGroup *DataTable::GetTileGroupWithLayout(
     schemas.push_back(tile_schema);
   }
 
+  // If the override option is true then we use the tuple number
+  // given in the argument
+  // This feature is added for generating a tile group for sampling
   TileGroup *tile_group = TileGroupFactory::GetTileGroup(
       database_oid, table_oid, tile_group_id, this, schemas, partitioning,
+      override_tile_group_size ?
+      override_tuples_per_tilegroup :
       tuples_per_tilegroup);
 
   return tile_group;
@@ -1119,25 +1134,40 @@ column_map_type DataTable::GetSampleColumnMap() {
  *
  * i.e. We add a new tile group to hold samples. The new tile group has
  * the same layout as the original one
+ *
+ * NOTE: It is required that sample vector is not empty
  */
 void DataTable::MaterializeSample() {
-  // We always use the current one in the table
-  column_map_type column_map;
+  // First check whether samples have already been taken or not
+  if(samples_for_optimizer.size() == 0) {
+    LOG_TRACE("Sample not taken yet. Please take sample first");
+
+    return;
+  }
 
   // If we have not materialized the sampling then create one first
-  if(sampled_tile_group == INVALID_OID) {
-    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group);
-  } else {
+  if(sampled_tile_group_id != INVALID_OID) {
+    LOG_TRACE("Dropping an old sampled tile group... Prepare a new one.");
 
-
-  // Figure out the partitioning for given tilegroup layout
-  //column_map = GetTileGroupLayout((LayoutType)peloton_layout_mode);
-
-  // Create a tile group with that partitioning
-  //std::shared_ptr<TileGroup> tile_group(GetTileGroupWithLayout(column_map));
-  //assert(tile_group.get());
-  //tile_group_id = tile_group.get()->GetTileGroupId();
+    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group_id);
   }
+
+  // We use a uniformed sampling data layout
+  column_map_type column_map = GetSampleColumnMap();
+
+  // Create a tile group with sampling column map
+  // NOTE: We override tile group size option here to create a tile group
+  // of size different then the one created by default
+  std::shared_ptr<TileGroup> tile_group_p{
+    GetTileGroupWithLayout(column_map, samples_for_optimizer.size(), true)};
+  assert(tile_group.get());
+
+  // Update current sample tile group ID, and register it with catalog manager
+  sampled_tile_group_id = tile_group_p.get()->GetTileGroupId();
+  catalog::Manager::GetInstance().AddTileGroup(sampled_tile_group_id,
+                                               tile_group_p);
+
+  // TODO: Materialize samples
 
   return;
 }
