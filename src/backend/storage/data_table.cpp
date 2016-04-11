@@ -1130,6 +1130,23 @@ column_map_type DataTable::GetSampleColumnMap() {
 }
 
 /*
+ * FillSampleTileGroup() - Fill sample tile group created elsewhere
+ *                         with actual tuples
+ *
+ * Since tuples might be stored in different layouts in different tile
+ * groups, we need to convert them to a uniformed layout which is defined
+ * by GetSampleColumnMap()
+ *
+ * NOTE: This function does not check whether sample size is zero
+ * or not since it trusts its caller to check that
+ */
+void DataTable::FillSampleTileGroup() {
+
+
+  return;
+}
+
+/*
  * MaterializeSample() - Store all samples as tuples in the tile group
  *
  * i.e. We add a new tile group to hold samples. The new tile group has
@@ -1153,13 +1170,16 @@ void DataTable::MaterializeSample() {
   }
 
   // We use a uniformed sampling data layout
-  column_map_type column_map = GetSampleColumnMap();
+  sample_column_map = GetSampleColumnMap();
 
   // Create a tile group with sampling column map
   // NOTE: We override tile group size option here to create a tile group
   // of size different then the one created by default
   std::shared_ptr<TileGroup> tile_group_p{
-    GetTileGroupWithLayout(column_map, samples_for_optimizer.size(), true)};
+    GetTileGroupWithLayout(sample_column_map,
+                           samples_for_optimizer.size(),
+                           true)
+                           };
   assert(tile_group.get());
 
   // Update current sample tile group ID, and register it with catalog manager

@@ -197,6 +197,8 @@ class DataTable : public AbstractTable {
 
   column_map_type GetSampleColumnMap();
 
+  void FillSampleTileGroup();
+
   void MaterializeSample();
 
   size_t GetOptimizerSampleSize() { return samples_for_optimizer.size(); }
@@ -260,6 +262,9 @@ class DataTable : public AbstractTable {
 
   // set of tile groups
   std::vector<oid_t> tile_groups;
+
+  // Hold sample column map
+  column_map_type sample_column_map;
 
   // An extra tile group which is used to hold sampling for optimizers
   // TODO: Finer grained, tile based sampling
