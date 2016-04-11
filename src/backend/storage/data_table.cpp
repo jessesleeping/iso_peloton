@@ -60,6 +60,8 @@ DataTable::DataTable(catalog::Schema *schema, const std::string &table_name,
     : AbstractTable(database_oid, table_oid, table_name, schema, own_schema),
       tuples_per_tilegroup(tuples_per_tilegroup),
       sampled_tile_group_id{INVALID_OID},
+      number_of_tuples{0.0},
+      tuple_count_exact{0LU},
       adapt_table(adapt_table) {
   // Init default partition
   auto col_count = schema->GetColumnCount();
@@ -191,6 +193,8 @@ ItemPointer DataTable::InsertEmptyVersion(const storage::Tuple *tuple) {
   LOG_TRACE("Location: %lu, %lu", location.block, location.offset);
 
   IncreaseNumberOfTuplesBy(1);
+  tuple_count_exact++;
+
   return location;
 }
 
@@ -211,6 +215,8 @@ ItemPointer DataTable::InsertVersion(const storage::Tuple *tuple) {
   LOG_TRACE("Location: %lu, %lu", location.block, location.offset);
 
   IncreaseNumberOfTuplesBy(1);
+  tuple_count_exact++;
+
   return location;
 }
 
@@ -232,6 +238,9 @@ ItemPointer DataTable::InsertTuple(const storage::Tuple *tuple) {
 
   // Increase the table's number of tuples by 1
   IncreaseNumberOfTuplesBy(1);
+  // Also increase exact number of tuples
+  tuple_count_exact++;
+
   // Increase the indexes' number of tuples by 1 as well
   for (auto index : indexes) index->IncreaseNumberOfTuplesBy(1);
 
@@ -1051,8 +1060,9 @@ size_t DataTable::SampleRows(size_t sample_size) {
   std::set<oid_t> row_id_set{};
 
   // Get tile group count and tuple count
-  // Not pretty sure why it returns a float...
-  size_t total_tuple_number = (size_t)GetNumberOfTuples();
+  // This is different from number of tuple which is just a float point
+  // approximation - this is exact accurate number
+  size_t total_tuple_number = tuple_count_exact;
 
   if(sample_size >= total_tuple_number) {
     LOG_TRACE("Sample size too large! Adjust to fit actual table size %lu... ",

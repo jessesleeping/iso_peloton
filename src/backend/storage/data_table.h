@@ -286,8 +286,12 @@ class DataTable : public AbstractTable {
   std::atomic<oid_t> unique_constraint_count = ATOMIC_VAR_INIT(START_OID);
 
   // # of tuples
-  // Ziqi: Why counting number of tuples using float? We could use uint64_t
-  float number_of_tuples = 0.0;
+  // Ziqi: Seems that it is just an approximation
+  float number_of_tuples;
+
+  // This is the exact number of tuples in this database table
+  // this->number_of_tuples is just an approximation
+  size_t tuple_count_exact;
 
   // dirty flag
   bool dirty = false;
