@@ -79,6 +79,7 @@
 #include "utils/memutils.h"
 
 // TODO: Peloton Changes
+#include "backend/optimizer/postgres_shim.h"
 #include "backend/optimizer/optimizer.h"
 #include "backend/logging/log_manager.h"
 
