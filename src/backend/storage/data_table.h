@@ -247,12 +247,16 @@ class DataTable : public AbstractTable {
 
   // TODO need some policy ?
   // number of tuples allocated per tilegroup
-  // This is also used by base table sampling from query optimizer
-  // And we assume this is a constant number in a table
+  // Ziqi: This is also used by base table sampling from query optimizer
+  //       And we assume this is a constant number in a table
   size_t tuples_per_tilegroup;
 
   // set of tile groups
   std::vector<oid_t> tile_groups;
+
+  // An extra tile group which is used to hold sampling for optimizers
+  // TODO: Finer grained, tile based sampling
+  oid_t sampled_tile_group;
 
   // INDEXES
   std::vector<index::Index *> indexes;
@@ -270,6 +274,7 @@ class DataTable : public AbstractTable {
   std::atomic<oid_t> unique_constraint_count = ATOMIC_VAR_INIT(START_OID);
 
   // # of tuples
+  // Ziqi: Why counting number of tuples using float? We could use uint64_t
   float number_of_tuples = 0.0;
 
   // dirty flag

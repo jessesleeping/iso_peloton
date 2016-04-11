@@ -46,12 +46,20 @@ namespace storage {
 // bool ContainsVisibleEntry(std::vector<ItemPointer> &locations,
 //                           const concurrency::Transaction *transaction);
 
+/*
+ * Constructor
+ *
+ * NOTE: In addition to standard data tile group, we also have a sampled tile
+ * group which is used to hold materialized sampling result. The sampled tile
+ * group OID is set to INVALID to avoid accidently usage.
+ */
 DataTable::DataTable(catalog::Schema *schema, const std::string &table_name,
                      const oid_t &database_oid, const oid_t &table_oid,
                      const size_t &tuples_per_tilegroup, const bool own_schema,
                      const bool adapt_table)
     : AbstractTable(database_oid, table_oid, table_name, schema, own_schema),
       tuples_per_tilegroup(tuples_per_tilegroup),
+      sampled_tile_group{INVALID_OID},
       adapt_table(adapt_table) {
   // Init default partition
   auto col_count = schema->GetColumnCount();

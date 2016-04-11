@@ -74,6 +74,7 @@ class TileGroup : public Printable {
   //===--------------------------------------------------------------------===//
 
   // copy tuple in place.
+  // Ziqi: Why passing in tuple_slot_id as reference? it is not modified
   void CopyTuple(const Tuple *tuple, const oid_t &tuple_slot_id);
 
   // insert tuple at next available slot in tile if a slot exists
