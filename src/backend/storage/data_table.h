@@ -192,6 +192,10 @@ class DataTable : public AbstractTable {
 
   size_t SampleRows(size_t sample_size);
 
+  column_map_type GetSampleColumnMap();
+
+  void MaterializeSample();
+
   size_t GetOptimizerSampleSize() { return samples_for_optimizer.size(); }
 
   //===--------------------------------------------------------------------===//

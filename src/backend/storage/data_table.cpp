@@ -80,6 +80,11 @@ DataTable::~DataTable() {
     catalog::Manager::GetInstance().DropTileGroup(tile_group_id);
   }
 
+  // Also if there is a sampling tile group drop it
+  if(sampled_tile_group != INVALID_OID) {
+    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group);
+  }
+
   // clean up indices
   for (auto index : indexes) {
     delete index;
@@ -92,36 +97,6 @@ DataTable::~DataTable() {
 
   // AbstractTable cleans up the schema
 }
-
-/**
- * Check if the locations contains at least one visible entry to the transaction
- */
-// bool ContainsVisibleEntry(std::vector<ItemPointer> &locations,
-//                           const concurrency::Transaction *transaction
-//                           __attribute__((unused))) {
-//   auto &manager = catalog::Manager::GetInstance();
-
-//   for (auto loc : locations) {
-//     oid_t tile_group_id = loc.block;
-//     oid_t tuple_offset = loc.offset;
-
-//     auto tile_group = manager.GetTileGroup(tile_group_id);
-//     auto header = tile_group->GetHeader();
-
-//     txn_id_t tuple_txn_id = header->GetTransactionId(tuple_offset);
-//     cid_t tuple_begin_cid = header->GetBeginCommitId(tuple_offset);
-//     cid_t tuple_end_cid = header->GetEndCommitId(tuple_offset);
-//     auto &txn_manager =
-//     concurrency::TransactionManagerFactory::GetInstance();
-
-//     bool visible = txn_manager.IsVisible(tuple_txn_id, tuple_begin_cid,
-//     tuple_end_cid);
-
-//     if (visible) return true;
-//   }
-
-//   return false;
-// }
 
 //===--------------------------------------------------------------------===//
 // TUPLE HELPER OPERATIONS
@@ -1114,6 +1089,57 @@ size_t DataTable::SampleRows(size_t sample_size) {
   }
 
   return row_id_set.size();
+}
+
+/*
+ * GetSampleColumnMap() - Get the column map for storing samples
+ *
+ * We always store all samples from different tile groups in a
+ * uniformed format, which is defined by this function.
+ *
+ * TODO: Currently we only store it as pure row storage, assuming
+ * that the number of samples is too small to cause any cache
+ * disruption and/or performance degradation. In the future we might
+ * consider adding more flexible ways of storing samples
+ */
+column_map_type DataTable::GetSampleColumnMap() {
+  column_map_type sample_column_map{};
+
+  // Adding each column in the same partition and do not change the order
+  size_t column_count = (size_t)schema->GetColumnCount();
+  for (oid_t column_it = 0; column_it < column_count; column_it++) {
+    sample_column_map[column_it] = std::make_pair(0, column_it);
+  }
+
+  return sample_column_map;
+}
+
+/*
+ * MaterializeSample() - Store all samples as tuples in the tile group
+ *
+ * i.e. We add a new tile group to hold samples. The new tile group has
+ * the same layout as the original one
+ */
+void DataTable::MaterializeSample() {
+  // We always use the current one in the table
+  column_map_type column_map;
+
+  // If we have not materialized the sampling then create one first
+  if(sampled_tile_group == INVALID_OID) {
+    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group);
+  } else {
+
+
+  // Figure out the partitioning for given tilegroup layout
+  //column_map = GetTileGroupLayout((LayoutType)peloton_layout_mode);
+
+  // Create a tile group with that partitioning
+  //std::shared_ptr<TileGroup> tile_group(GetTileGroupWithLayout(column_map));
+  //assert(tile_group.get());
+  //tile_group_id = tile_group.get()->GetTileGroupId();
+  }
+
+  return;
 }
 
 }  // End storage namespace
