@@ -69,5 +69,30 @@ TEST_F(DataTableTests, TransformTileGroupTest) {
   data_table->TransformTileGroup(0, theta);
 }
 
+/*
+ * SamplingForOptimizerTest - Tests basic table basic sampling
+ */
+TEST_F(DataTableTests, SamplingForOptimizerTest) {
+  const int tuple_count = TESTS_TUPLES_PER_TILEGROUP;
+
+  // Create a table and wrap it in logical tiles
+  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+  auto txn = txn_manager.BeginTransaction();
+  std::unique_ptr<storage::DataTable> data_table(
+      ExecutorTestsUtil::CreateTable(tuple_count, false));
+  ExecutorTestsUtil::PopulateTable(txn, data_table.get(), tuple_count, false,
+                                   false, true);
+  txn_manager.CommitTransaction();
+
+  size_t sample_size = data_table->SampleRows(10);
+  (void)sample_size;
+
+  LOG_TRACE("Sample size = %lu; actual size = %lu\n",
+            sample_size,
+            data_table->GetOptimizerSampleSize());
+
+  return;
+}
+
 }  // End test namespace
 }  // End peloton namespace

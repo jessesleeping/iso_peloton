@@ -477,14 +477,25 @@ TileGroup *DataTable::GetTileGroupWithLayout(
   // Figure out the columns in each tile in new layout
   std::map<std::pair<oid_t, oid_t>, oid_t> tile_column_map;
   for (auto entry : partitioning) {
+    // The ordering peoperty of std::map implicitly determines the order
+    // of all elements inside: <partition #, column #>
+    // When iterating through this map, we get the same partition
+    // in a group, and within each partition the column ID is also ordered
+    // Actual column ID are ordered such that they come one partition
+    // at a time, and also come in column # order inside a partition
     tile_column_map[entry.second] = entry.first;
   }
 
   // Build the schema tile at a time
+  // It maps partition ID to a list of columns
   std::map<oid_t, std::vector<catalog::Column>> tile_schemas;
+
+  // entry comes in order: Same partition's column comes first
+  // and also these columns are of the same order inside partition
   for (auto entry : tile_column_map) {
     tile_schemas[entry.first.first].push_back(schema->GetColumn(entry.second));
   }
+
   for (auto entry : tile_schemas) {
     catalog::Schema tile_schema(entry.second);
     schemas.push_back(tile_schema);
@@ -1019,8 +1030,15 @@ column_map_type DataTable::GetStaticColumnMap(const std::string &table_name,
  * Since random number generating is a relatively expensive process, we
  * buffer the result in member "sample_for_optimizer" as ItemPointer vector
  * in order to reuse them for a different column next time
+ *
+ * NOTE 1: The number of samples may not be exact depending on the random
+ * numbers. We return the actual number of samples taken which is the precise one
+ *
+ * TODO: Currently there is no concurrent control on this part. We need to
+ * control how threads access this part and make sure there is no
+ * undefined behavior
  */
-void DataTable::SampleRows(size_t sample_size) {
+size_t DataTable::SampleRows(size_t sample_size) {
   LOG_TRACE("Start a new sampling, size = %lu ", sample_size);
 
   if(samples_for_optimizer.size() != 0) {
@@ -1037,25 +1055,57 @@ void DataTable::SampleRows(size_t sample_size) {
   // Get tile group count and tuple count
   // Not pretty sure why it returns a float...
   size_t total_tuple_number = (size_t)GetNumberOfTuples();
-  size_t total_tile_group_number = (size_t)GetTileGroupCount();
 
-  // I copied this from the Internet...
-  std::random_device rd;
-  std::mt19937 generator(rd());
+  if(sample_size >= total_tuple_number) {
+    LOG_TRACE("Sample size too large! Adjust to fit actual table size %lu... ",
+              total_tuple_number);
 
-  // This is inclusive, [0, total_tuple_number - 1]
-  std::uniform_int_distribution<> distribution(0, total_tuple_number - 1);
+    sample_size = total_tuple_number;
 
-  // outer loop detect whether there are duplicates
-  while(row_id_set.size() < sample_size) {
-    // Inner loop generates random numbers and insert into
-    // the ordered set
+    // Do not use random generator if we know we will cover all rows
+    // Just insert them in increasing order
     for(size_t i = 0;i < sample_size;i++) {
-      row_id_set.insert(distribution(generator));
+      row_id_set.insert(i);
     }
+  } else {
+    // I copied this from the Internet...
+    std::random_device rd;
+    std::mt19937 generator(rd());
+
+    // This is inclusive, [0, total_tuple_number - 1]
+    std::uniform_int_distribution<> distribution(0, total_tuple_number - 1);
+
+    int iter_count = 0;
+
+    // outer loop detect whether there are duplicates
+    while(row_id_set.size() < sample_size && \
+          iter_count < 10) {
+      // Inner loop generates random numbers and insert into
+      // the ordered set
+      for(size_t i = 0;i < sample_size;i++) {
+        row_id_set.insert(distribution(generator));
+      }
+
+      // Avoid looping for too many times
+      iter_count++;
+
+    } // while row id set size < sample size
+  } // if sample size >= total tuple number
+
+  // Iterate through all row ids and convert them into item pointers
+  for(auto row_id : row_id_set) {
+    oid_t tile_group_id = row_id / tuples_per_tilegroup;
+    oid_t row_offset_in_tile_group = row_id % tuples_per_tilegroup;
+
+    // Make it as ItemPointer
+    // TODO: This is unsafe since any change to the table would potentially
+    // make dangling pointers
+    // NOTE: We do not worry about layout changes since tile group already
+    // abstracts out layout information
+    samples_for_optimizer.push_back(ItemPointer{tile_group_id, row_offset_in_tile_group});
   }
-  (void) total_tile_group_number;
-  return;
+
+  return row_id_set.size();
 }
 
 }  // End storage namespace

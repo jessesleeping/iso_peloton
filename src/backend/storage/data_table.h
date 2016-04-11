@@ -190,7 +190,9 @@ class DataTable : public AbstractTable {
   // Query Optimizer Interface
   //===--------------------------------------------------------------------===//
 
-  void SampleRows(size_t sample_size);
+  size_t SampleRows(size_t sample_size);
+
+  size_t GetOptimizerSampleSize() { return samples_for_optimizer.size(); }
 
   //===--------------------------------------------------------------------===//
   // UTILITIES
@@ -245,6 +247,8 @@ class DataTable : public AbstractTable {
 
   // TODO need some policy ?
   // number of tuples allocated per tilegroup
+  // This is also used by base table sampling from query optimizer
+  // And we assume this is a constant number in a table
   size_t tuples_per_tilegroup;
 
   // set of tile groups

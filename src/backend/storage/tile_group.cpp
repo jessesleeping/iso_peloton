@@ -90,22 +90,13 @@ oid_t TileGroup::GetActiveTupleCount() const {
 // Operations
 //===--------------------------------------------------------------------===//
 
-/**
- * Grab next slot (thread-safe) and fill in the tuple
- *
- * Returns slot where inserted (INVALID_ID if not inserted)
+/*
+ * CopyTuple() - Specify an existing slot ID and copy a given tuple
+ *               into that slot
  */
 void TileGroup::CopyTuple(const Tuple *tuple, const oid_t &tuple_slot_id) {
-  // oid_t tuple_slot_id = tile_group_header->GetNextEmptyTupleSlot();
-
   LOG_TRACE("Tile Group Id :: %lu status :: %lu out of %lu slots ",
             tile_group_id, tuple_slot_id, num_tuple_slots);
-
-  // No more slots
-  // if (tuple_slot_id == INVALID_OID) {
-  //   LOG_TRACE("Failed to get next empty tuple slot within tile group.");
-  //   return INVALID_OID;
-  // }
 
   oid_t tile_column_count;
   oid_t column_itr = 0;
@@ -130,17 +121,7 @@ void TileGroup::CopyTuple(const Tuple *tuple, const oid_t &tuple_slot_id) {
     }
   }
 
-  // Set MVCC info
-  // assert(tile_group_header->GetTransactionId(tuple_slot_id) ==
-  // transaction_id);
-  // assert(tile_group_header->GetBeginCommitId(tuple_slot_id) == MAX_CID);
-  // assert(tile_group_header->GetEndCommitId(tuple_slot_id) == MAX_CID);
-
-  // tile_group_header->SetTransactionId(tuple_slot_id, transaction_id);
-  // tile_group_header->SetBeginCommitId(tuple_slot_id, MAX_CID);
-  // tile_group_header->SetEndCommitId(tuple_slot_id, MAX_CID);
-  // tile_group_header->SetInsertCommit(tuple_slot_id, false);
-  // tile_group_header->SetDeleteCommit(tuple_slot_id, false);
+  return;
 }
 
 /**
