@@ -27,7 +27,7 @@ namespace peloton {
 namespace storage {
 
 TileGroup::TileGroup(BackendType backend_type,
-                     TileGroupHeader *tile_group_header, AbstractTable *table,
+                     TileGroupHeader *tile_group_header, AbstractTable *table_p,
                      const std::vector<catalog::Schema> &schemas,
                      const column_map_type &column_map, int tuple_count)
     : database_id(INVALID_OID),
@@ -36,7 +36,7 @@ TileGroup::TileGroup(BackendType backend_type,
       backend_type(backend_type),
       tile_schemas(schemas),
       tile_group_header(tile_group_header),
-      table(table),
+      table(table_p),
       num_tuple_slots(tuple_count),
       column_map(column_map) {
   tile_count = tile_schemas.size();

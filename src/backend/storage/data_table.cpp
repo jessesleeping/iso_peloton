@@ -465,13 +465,15 @@ void DataTable::ResetDirty() { dirty = false; }
  * This function allocates memory for a tile group, which needs to be freed
  * implicitly by shared pointer when droping the tile group
  *
- * NOTE: This function has an option to override
+ * NOTE: This function has an option to override default tuple count
+ * for a tile group. If we set the override flag, then tile group
+ * size is passed via variable "override_tuples_per_tilegroup".
  */
 TileGroup *DataTable::GetTileGroupWithLayout(
     const column_map_type &partitioning,
     size_t override_tuples_per_tilegroup = 0,
     bool override_tile_group_size = false) {
-  std::vector<catalog::Schema> schemas;
+  std::vector<catalog::Schema> schema_list;
   oid_t tile_group_id = INVALID_OID;
 
   tile_group_id = catalog::Manager::GetInstance().GetNextOid();
@@ -500,14 +502,19 @@ TileGroup *DataTable::GetTileGroupWithLayout(
 
   for (auto entry : tile_schemas) {
     catalog::Schema tile_schema(entry.second);
-    schemas.push_back(tile_schema);
+    schema_list.push_back(tile_schema);
   }
 
   // If the override option is true then we use the tuple number
   // given in the argument
   // This feature is added for generating a tile group for sampling
   TileGroup *tile_group = TileGroupFactory::GetTileGroup(
-      database_oid, table_oid, tile_group_id, this, schemas, partitioning,
+      database_oid,
+      table_oid,
+      tile_group_id,
+      this,
+      schema_list,
+      partitioning,
       override_tile_group_size ?
       override_tuples_per_tilegroup :
       tuples_per_tilegroup);
