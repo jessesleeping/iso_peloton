@@ -125,9 +125,10 @@ void TileGroup::CopyTuple(const Tuple *tuple, const oid_t &tuple_slot_id) {
 }
 
 /**
- * Grab next slot (thread-safe) and fill in the tuple
+ * InsertTuple() - Grab next slot (thread-safe) and fill in the tuple
  *
- * Returns slot where inserted (INVALID_ID if not inserted)
+ * Returns slot where inserted (INVALID_ID if not inserted because
+ * of tuple slots running out)
  */
 oid_t TileGroup::InsertTuple(const Tuple *tuple) {
   oid_t tuple_slot_id = tile_group_header->GetNextEmptyTupleSlot();
@@ -141,15 +142,19 @@ oid_t TileGroup::InsertTuple(const Tuple *tuple) {
     return INVALID_OID;
   }
 
-  oid_t tile_column_count;
+  // This iterator iterates over tuple columns on the table schema
+  // i.e. not partitioned schema
   oid_t column_itr = 0;
 
+  // First iterate through tiles and then iterate through columns
+  // inside a tile to copy columnar value
   for (oid_t tile_itr = 0; tile_itr < tile_count; tile_itr++) {
     const catalog::Schema &schema = tile_schemas[tile_itr];
-    tile_column_count = schema.GetColumnCount();
+    oid_t tile_column_count = schema.GetColumnCount();
 
     storage::Tile *tile = GetTile(tile_itr);
     assert(tile);
+
     char *tile_tuple_location = tile->GetTupleLocation(tuple_slot_id);
     assert(tile_tuple_location);
 
@@ -158,23 +163,12 @@ oid_t TileGroup::InsertTuple(const Tuple *tuple) {
 
     for (oid_t tile_column_itr = 0; tile_column_itr < tile_column_count;
          tile_column_itr++) {
-      tile_tuple.SetValue(tile_column_itr, tuple->GetValue(column_itr),
+      tile_tuple.SetValue(tile_column_itr,
+                          tuple->GetValue(column_itr),
                           tile->GetPool());
       column_itr++;
     }
   }
-
-  //  // Set MVCC info
-  //  assert(tile_group_header->GetTransactionId(tuple_slot_id) ==
-  //  INVALID_TXN_ID);
-  //  assert(tile_group_header->GetBeginCommitId(tuple_slot_id) == MAX_CID);
-  //  assert(tile_group_header->GetEndCommitId(tuple_slot_id) == MAX_CID);
-  //
-  //  tile_group_header->SetTransactionId(tuple_slot_id, transaction_id);
-  //  tile_group_header->SetBeginCommitId(tuple_slot_id, MAX_CID);
-  //  tile_group_header->SetEndCommitId(tuple_slot_id, MAX_CID);
-  //  tile_group_header->SetInsertCommit(tuple_slot_id, false);
-  //  tile_group_header->SetDeleteCommit(tuple_slot_id, false);
 
   return tuple_slot_id;
 }
