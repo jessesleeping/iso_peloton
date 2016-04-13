@@ -43,9 +43,6 @@ bool peloton_fsm;
 namespace peloton {
 namespace storage {
 
-// bool ContainsVisibleEntry(std::vector<ItemPointer> &locations,
-//                           const concurrency::Transaction *transaction);
-
 /*
  * Constructor
  *
@@ -625,16 +622,29 @@ size_t DataTable::GetTileGroupCount() const {
   return size;
 }
 
+/*
+ * GetTileGroup() - Get a pointer to TileGroup object by its offset
+ *
+ * This function calls GetTileGroupById() using the global ID
+ */
 std::shared_ptr<storage::TileGroup> DataTable::GetTileGroup(
     const oid_t &tile_group_offset) const {
   assert(tile_group_offset < GetTileGroupCount());
+
   auto tile_group_id = tile_groups[tile_group_offset];
+
   return GetTileGroupById(tile_group_id);
 }
 
+/*
+ * GetTileGroupById() - Get a pointer to TileGroup object using the global ID
+ *
+ * This is a wrapper to catalog manager
+ */
 std::shared_ptr<storage::TileGroup> DataTable::GetTileGroupById(
     const oid_t &tile_group_id) const {
   auto &manager = catalog::Manager::GetInstance();
+
   return manager.GetTileGroup(tile_group_id);
 }
 
@@ -1010,6 +1020,8 @@ column_map_type DataTable::GetStaticColumnMap(const std::string &table_name,
  * This function queries catalog manager for a shared_ptr object
  */
 std::shared_ptr<storage::TileGroup> DataTable::GetSampleTileGroup() const {
+  assert(sampled_tile_group_id != INVALID_OID);
+
   return catalog::Manager::GetInstance().GetTileGroup(sampled_tile_group_id);
 }
 
@@ -1186,7 +1198,47 @@ void DataTable::FillSampleTileGroup() {
     return;
   }
 
+  // Get tile group for sampling table outside of
+  // the loop
+  auto sample_tile_group_p = GetSampleTileGroup();
+  // We start filling sample table from offset 0
+  oid_t sample_row_id = 0;
 
+  // Iterate through our sampled pointers
+  for(ItemPointer &item : samples_for_optimizer) {
+    // Offset of tile group (block offset)
+    oid_t tile_group_offset = item.block;
+    // Offset inside tile group (row offset)
+    oid_t row_offset = item.offset;
+
+    auto tile_group_p = GetTileGroup(tile_group_offset);
+
+    for(auto &column_pair : inline_column_map) {
+      oid_t table_column_id = column_pair.first;
+      oid_t sample_column_id = column_pair.second;
+
+      // Tile index inside TileGroup
+      oid_t table_tile_offset = INVALID_OID;
+      // Column index inside tile
+      oid_t table_tile_column_offset = INVALID_OID;
+
+      // This function modifies the last two arguments
+      tile_group_p->LocateTileAndColumn(table_column_id,
+                                        table_tile_offset,
+                                        table_tile_column_offset);
+
+      assert(table_tile_offset != INVALID_OID);
+      assert(table_tile_column_offset != INVALID_OID);
+
+      // Then fetch the tile and get value directly from the tile
+      // since we only sample inlined data, value itself is enough for representing it
+      Tile *tile_p = tile_group_p->GetTile(table_tile_offset);
+      Value temp_value = tile_p->GetValue(row_offset, table_tile_column_offset);
+
+      (void)sample_row_id;
+      (void)sample_column_id;
+    }
+  }
 
   return;
 }
@@ -1217,7 +1269,7 @@ void DataTable::MaterializeSample() {
   // Create a tile group with sampling column map
   // It assigns sampled_tile_group_id
   std::shared_ptr<TileGroup> tile_group_p{BuildSampleTileGroup()};
-  assert(tile_group.get());
+  assert(tile_group_p.get());
 
   // Update current sample tile group ID, and register it with catalog manager
   sampled_tile_group_id = tile_group_p.get()->GetTileGroupId();
