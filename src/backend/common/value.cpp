@@ -306,10 +306,13 @@ Value Value::InitFromTupleStorage(const void *storage, ValueType type,
          */
         if ((inline_data[0] & OBJECT_NULL_BIT) != 0) {
           retval.tagAsNull();
-          break;
+        } else {
+          // NOTE: We do not worry about sign extension here
+          // but in general such conversion may cause undesired sign extension
+          int length = static_cast<int>(inline_data[0]);
+          retval.SetObjectLength(length);  // this unSets the null tag.
         }
-        int length = inline_data[0];
-        retval.SetObjectLength(length);  // this unSets the null tag.
+
         break;
       }
 
