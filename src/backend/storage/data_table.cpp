@@ -1005,6 +1005,15 @@ column_map_type DataTable::GetStaticColumnMap(const std::string &table_name,
 //===--------------------------------------------------------------------===//
 
 /*
+ * GetSampleTileGroup() - Return sampling tile group pointer
+ *
+ * This function queries catalog manager for a shared_ptr object
+ */
+std::shared_ptr<storage::TileGroup> DataTable::GetSampleTileGroup() const {
+  return catalog::Manager::GetInstance().GetTileGroup(sampled_tile_group_id);
+}
+
+/*
  * SampleRows() - This function samples rows in the physical table
  *
  * Since random number generating is a relatively expensive process, we
@@ -1140,7 +1149,7 @@ void DataTable::BuildSampleSchema() {
  * created tile group, and also assign it to class member variable
  */
 TileGroup *DataTable::BuildSampleTileGroup() {
-  if(GetOptimizerSampleSize() == 0) {
+  if(GetOptimizerSampleSize() == 0LU) {
     LOG_TRACE("Sample size is zero. Please take samples first");
 
     return nullptr;
@@ -1171,6 +1180,12 @@ TileGroup *DataTable::BuildSampleTileGroup() {
  * We always store samples in columnar format
  */
 void DataTable::FillSampleTileGroup() {
+  if(GetOptimizerSampleSize() == 0LU) {
+    LOG_TRACE("Sample has not been taken");
+
+    return;
+  }
+
 
 
   return;
@@ -1186,7 +1201,7 @@ void DataTable::FillSampleTileGroup() {
  */
 void DataTable::MaterializeSample() {
   // First check whether samples have already been taken or not
-  if(GetOptimizerSampleSize() == 0) {
+  if(GetOptimizerSampleSize() == 0LU) {
     LOG_TRACE("Sample not taken yet. Please take sample first");
 
     return;

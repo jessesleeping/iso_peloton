@@ -205,6 +205,8 @@ class DataTable : public AbstractTable {
 
   inline size_t GetOptimizerSampleSize() { return samples_for_optimizer.size(); }
 
+  inline std::shared_ptr<storage::TileGroup> GetSampleTileGroup() const;
+
   //===--------------------------------------------------------------------===//
   // UTILITIES
   //===--------------------------------------------------------------------===//

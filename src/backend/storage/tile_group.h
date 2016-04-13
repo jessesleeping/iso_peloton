@@ -150,7 +150,8 @@ class TileGroup : public Printable {
 
   size_t GetTileCount() const { return tile_count; }
 
-  void LocateTileAndColumn(oid_t column_offset, oid_t &tile_offset,
+  void LocateTileAndColumn(oid_t column_offset,
+                           oid_t &tile_offset,
                            oid_t &tile_column_offset);
 
   oid_t GetTileIdFromColumnId(oid_t column_id);
