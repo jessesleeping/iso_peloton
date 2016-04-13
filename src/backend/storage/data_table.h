@@ -125,10 +125,7 @@ class DataTable : public AbstractTable {
   size_t GetTileGroupCount() const;
 
   // Get a tile group with given layout
-  // Ziqi: We also have a choice to override the default tile group size
-  TileGroup *GetTileGroupWithLayout(const column_map_type &partitioning,
-                                    size_t override_tuples_per_tilegroup,
-                                    bool override_tile_group_size);
+  TileGroup *GetTileGroupWithLayout(const column_map_type &partitioning);
 
   //===--------------------------------------------------------------------===//
   // INDEX
@@ -193,15 +190,20 @@ class DataTable : public AbstractTable {
   // Query Optimizer Interface
   //===--------------------------------------------------------------------===//
 
+  // Called during construction
+  void BuildSampleSchema();
+
+  // Called by user
   size_t SampleRows(size_t sample_size);
 
-  column_map_type GetSampleColumnMap();
+  // Called to build a tile group based on sampled rows
+  TileGroup *BuildSampleTileGroup();
 
   void FillSampleTileGroup();
 
   void MaterializeSample();
 
-  size_t GetOptimizerSampleSize() { return samples_for_optimizer.size(); }
+  inline size_t GetOptimizerSampleSize() { return samples_for_optimizer.size(); }
 
   //===--------------------------------------------------------------------===//
   // UTILITIES
@@ -263,12 +265,32 @@ class DataTable : public AbstractTable {
   // set of tile groups
   std::vector<oid_t> tile_groups;
 
-  // Hold sample column map
+  ///////////////////////////////////////////////////////////////////
+  // The following four are initialized during construction
+
+  // Stores a map from table column to sampling table column
+  std::map<oid_t, oid_t> inline_column_map;
+
+  // Hold sample column map (mapping from sampling table column to
+  // partition ID & partition column ID)
   column_map_type sample_column_map;
 
+  // A list of schemas for sample table
+  std::vector<catalog::Schema> sample_schema_list;
+
+  // If a corresponding flag is false then we do not sample
+  // that column
+  std::vector<bool> sample_column_mask;
+
+  // The following one is initialized when sampling function is called
+
   // An extra tile group which is used to hold sampling for optimizers
-  // TODO: Finer grained, tile based sampling
   oid_t sampled_tile_group_id;
+
+  // Samples of table rows to do statistics
+  std::vector<ItemPointer> samples_for_optimizer;
+
+  ///////////////////////////////////////////////////////////////////
 
   // INDEXES
   std::vector<index::Index *> indexes;
@@ -307,9 +329,6 @@ class DataTable : public AbstractTable {
 
   // samples for clustering
   std::vector<brain::Sample> samples;
-
-  // Samples of table rows to do statistics
-  std::vector<ItemPointer> samples_for_optimizer;
 };
 
 }  // End storage namespace

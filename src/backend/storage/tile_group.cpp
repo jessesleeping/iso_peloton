@@ -27,14 +27,16 @@ namespace peloton {
 namespace storage {
 
 TileGroup::TileGroup(BackendType backend_type,
-                     TileGroupHeader *tile_group_header, AbstractTable *table_p,
-                     const std::vector<catalog::Schema> &schemas,
-                     const column_map_type &column_map, int tuple_count)
+                     TileGroupHeader *tile_group_header,
+                     AbstractTable *table_p,
+                     const std::vector<catalog::Schema> &schema_list,
+                     const column_map_type &column_map,
+                     int tuple_count)
     : database_id(INVALID_OID),
       table_id(INVALID_OID),
       tile_group_id(INVALID_OID),
       backend_type(backend_type),
-      tile_schemas(schemas),
+      tile_schemas(schema_list),
       tile_group_header(tile_group_header),
       table(table_p),
       num_tuple_slots(tuple_count),
@@ -306,41 +308,15 @@ oid_t TileGroup::InsertTupleFromCheckpoint(oid_t tuple_slot_id,
   return tuple_slot_id;
 }
 
-// delete tuple at given slot if it is neither already locked nor deleted in
-// future.
-// bool TileGroup::DeleteTuple(txn_id_t transaction_id, oid_t tuple_slot_id,
-//                             cid_t last_cid) {
-//   // do a dirty delete
-//   if (tile_group_header->LockTupleSlot(tuple_slot_id, transaction_id)) {
-//     if (tile_group_header->IsDeletable(tuple_slot_id, transaction_id,
-//                                        last_cid)) {
-//       return true;
-//     } else {
-//       LOG_TRACE("Delete failed: not deletable");
-//       tile_group_header->UnlockTupleSlot(tuple_slot_id, transaction_id);
-//       return false;
-//     }
-//   } else if (tile_group_header->GetTransactionId(tuple_slot_id) ==
-//              transaction_id) {
-//     // is a own insert, is already latched by myself and is safe to set
-//     LOG_TRACE("is this a own insert? txn_id = %lu, cbeg = %lu, cend = %lu",
-//              tile_group_header->GetTransactionId(tuple_slot_id),
-//              tile_group_header->GetBeginCommitId(tuple_slot_id),
-//              tile_group_header->GetEndCommitId(tuple_slot_id));
-//     assert(tile_group_header->GetBeginCommitId(tuple_slot_id) == MAX_CID);
-//     assert(tile_group_header->GetEndCommitId(tuple_slot_id) == MAX_CID);
-//     tile_group_header->SetTransactionId(tuple_slot_id, INVALID_TXN_ID);
-//     return true;
-//   } else {
-//     LOG_TRACE(
-//         "Delete failed: Latch failed and Ownership check failed: %lu != %lu",
-//         tile_group_header->GetTransactionId(tuple_slot_id), transaction_id);
-//     return false;
-//   }
-// }
-
-// Sets the tile id and column id w.r.t that tile corresponding to
-// the specified tile group column id.
+/*
+ * LocateTileAndColumn() - Given a table column ID, return partition ID and
+ *                         in-partition column ID
+ *
+ * This function queries column map which is constructed during initialization
+ * NOTE: Since we have sampling table, the actual column map might not be
+ * the same as the one stored in the base table (which could be referenced
+ * through the table pointer)
+ */
 void TileGroup::LocateTileAndColumn(oid_t column_offset, oid_t &tile_offset,
                                     oid_t &tile_column_offset) {
   assert(column_map.count(column_offset) != 0);

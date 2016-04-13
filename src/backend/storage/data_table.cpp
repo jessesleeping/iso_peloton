@@ -65,9 +65,26 @@ DataTable::DataTable(catalog::Schema *schema, const std::string &table_name,
       adapt_table(adapt_table) {
   // Init default partition
   auto col_count = schema->GetColumnCount();
+  // We only map inlined columns to sampling table
+  oid_t sample_inline_column_it = 0;
+
   for (oid_t col_itr = 0; col_itr < col_count; col_itr++) {
     default_partition[col_itr] = std::make_pair(0, col_itr);
+
+    // Only maps inlined columns into samples
+    if(schema->IsInlined(col_itr) == true) {
+      inline_column_map[col_itr] = sample_inline_column_it++;
+      sample_column_mask.push_back(true);
+    } else {
+      // false means the column is not mapped into sample column
+      sample_column_mask.push_back(false);
+    }
   }
+
+  // Build sample column map and sample schema
+  // NOTE: These two are based on sample column layout, which is
+  // different from data table layout
+  BuildSampleSchema();
 
   // Create a tile group.
   AddDefaultTileGroup();
@@ -368,46 +385,6 @@ bool DataTable::InsertInSecondaryIndexes(const storage::Tuple *tuple,
 }
 
 //===--------------------------------------------------------------------===//
-// DELETE
-//===--------------------------------------------------------------------===//
-
-/**
- * @brief Try to delete a tuple from the table.
- * It may fail because the tuple has been latched or conflict with a future
- *delete.
- *
- * @param transaction_id  The current transaction Id.
- * @param location        ItemPointer of the tuple to delete.
- * NB: location.block should be the tile_group's \b ID, not \b offset.
- * @return True on success, false on failure.
- */
-// bool DataTable::DeleteTuple(const concurrency::Transaction *transaction,
-//                             ItemPointer location) {
-//   oid_t tile_group_id = location.block;
-//   oid_t tuple_id = location.offset;
-
-//   auto tile_group = GetTileGroupById(tile_group_id);
-//   txn_id_t transaction_id = transaction->GetTransactionId();
-//   cid_t last_cid = transaction->GetBeginCommitId();
-
-//   // Delete slot in underlying tile group
-//   auto status = tile_group->DeleteTuple(transaction_id, tuple_id, last_cid);
-//   if (status == false) {
-//     LOG_WARN("Failed to delete tuple from the tile group : %lu , Txn_id : %lu
-//     ",
-//              tile_group_id, transaction_id);
-//     return false;
-//   }
-
-//   LOG_TRACE("Deleted location :: block = %lu offset = %lu ", location.block,
-//             location.offset);
-//   // Decrease the table's number of tuples by 1
-//   DecreaseNumberOfTuplesBy(1);
-
-//   return true;
-// }
-
-//===--------------------------------------------------------------------===//
 // STATS
 //===--------------------------------------------------------------------===//
 
@@ -464,15 +441,9 @@ void DataTable::ResetDirty() { dirty = false; }
  *
  * This function allocates memory for a tile group, which needs to be freed
  * implicitly by shared pointer when droping the tile group
- *
- * NOTE: This function has an option to override default tuple count
- * for a tile group. If we set the override flag, then tile group
- * size is passed via variable "override_tuples_per_tilegroup".
  */
 TileGroup *DataTable::GetTileGroupWithLayout(
-    const column_map_type &partitioning,
-    size_t override_tuples_per_tilegroup = 0,
-    bool override_tile_group_size = false) {
+    const column_map_type &partitioning) {
   std::vector<catalog::Schema> schema_list;
   oid_t tile_group_id = INVALID_OID;
 
@@ -505,9 +476,6 @@ TileGroup *DataTable::GetTileGroupWithLayout(
     schema_list.push_back(tile_schema);
   }
 
-  // If the override option is true then we use the tuple number
-  // given in the argument
-  // This feature is added for generating a tile group for sampling
   TileGroup *tile_group = TileGroupFactory::GetTileGroup(
       database_oid,
       table_oid,
@@ -515,8 +483,6 @@ TileGroup *DataTable::GetTileGroupWithLayout(
       this,
       schema_list,
       partitioning,
-      override_tile_group_size ?
-      override_tuples_per_tilegroup :
       tuples_per_tilegroup);
 
   return tile_group;
@@ -1124,38 +1090,85 @@ size_t DataTable::SampleRows(size_t sample_size) {
 }
 
 /*
- * GetSampleColumnMap() - Get the column map for storing samples
+ * BuildSampleSchema() - Build a column map and schema list for samples
  *
  * We always store all samples from different tile groups in a
  * uniformed format, which is defined by this function.
  *
- * TODO: Currently we only store it as pure row storage, assuming
- * that the number of samples is too small to cause any cache
- * disruption and/or performance degradation. In the future we might
- * consider adding more flexible ways of storing samples
+ * TODO: Currently we only store it as pure column storage, since we omit
+ * some columns in the base table, it would be peculiatr to store a
+ * modified format of row for the base table
+ *
+ * NOTE: We filter out columns that are stored non-inlined
  */
-column_map_type DataTable::GetSampleColumnMap() {
-  column_map_type sample_column_map{};
+void DataTable::BuildSampleSchema() {
+  if(sample_column_map.size() != 0) {
+    LOG_TRACE("Sample column map size not zero. Clear it first");
 
-  // Adding each column in the same partition and do not change the order
-  size_t column_count = (size_t)schema->GetColumnCount();
-  for (oid_t column_it = 0; column_it < column_count; column_it++) {
-    sample_column_map[column_it] = std::make_pair(0, column_it);
+    sample_column_map.clear();
   }
 
-  return sample_column_map;
+  assert(sample_column_map.size() == 0);
+  assert(sample_schema_list.size() == 0);
+
+  for(auto &item : inline_column_map) {
+    oid_t table_column_id = item.first;
+    oid_t sample_column_id = item.second;
+
+    // Make each partition as a separate row (partition)
+    sample_column_map[sample_column_id] = \
+      std::pair<oid_t, oid_t>(sample_column_id, 0);
+
+    // Need a vector of columns to construct new schema
+    // for partition
+    std::vector<catalog::Column> column_list{};
+    column_list.push_back(schema->GetColumn(table_column_id));
+    sample_schema_list.push_back(catalog::Schema(column_list));
+  }
+
+  return;
+}
+
+/*
+ * BuildSampleTileGroup() - Build a tile group instance with sampling
+ *                          arguments
+ *
+ * It uses the sampling table's column map (pure columnar), schema list
+ * (one column per schema), and tuple count (must take sample first)
+ *
+ * NOTE: This function allocates new tile group ID and assign it to the
+ * created tile group, and also assign it to class member variable
+ */
+TileGroup *DataTable::BuildSampleTileGroup() {
+  if(GetOptimizerSampleSize() == 0) {
+    LOG_TRACE("Sample size is zero. Please take samples first");
+
+    return nullptr;
+  }
+
+  // Allocate new tile group ID, and assign to class member
+  sampled_tile_group_id = catalog::Manager::GetInstance().GetNextOid();
+
+  // Create a tile group with column map, schema list and tuple count
+  // of the sample table rather than data table
+  TileGroup *tile_group = TileGroupFactory::GetTileGroup(
+      database_oid,            // Stored in data table
+      table_oid,               // Stored in data table
+      sampled_tile_group_id,   // Allocated just now
+      this,                    // Table reference
+      sample_schema_list,      // Used by TileGroup to build its internal tile list
+      sample_column_map,       // Used by TileGroup to locate table column
+      GetOptimizerSampleSize() // Used by TileGroup to allocate internal storage
+      );
+
+  return tile_group;
 }
 
 /*
  * FillSampleTileGroup() - Fill sample tile group created elsewhere
  *                         with actual tuples
  *
- * Since tuples might be stored in different layouts in different tile
- * groups, we need to convert them to a uniformed layout which is defined
- * by GetSampleColumnMap()
- *
- * NOTE: This function does not check whether sample size is zero
- * or not since it trusts its caller to check that
+ * We always store samples in columnar format
  */
 void DataTable::FillSampleTileGroup() {
 
@@ -1173,7 +1186,7 @@ void DataTable::FillSampleTileGroup() {
  */
 void DataTable::MaterializeSample() {
   // First check whether samples have already been taken or not
-  if(samples_for_optimizer.size() == 0) {
+  if(GetOptimizerSampleSize() == 0) {
     LOG_TRACE("Sample not taken yet. Please take sample first");
 
     return;
@@ -1186,17 +1199,9 @@ void DataTable::MaterializeSample() {
     catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group_id);
   }
 
-  // We use a uniformed sampling data layout
-  sample_column_map = GetSampleColumnMap();
-
   // Create a tile group with sampling column map
-  // NOTE: We override tile group size option here to create a tile group
-  // of size different then the one created by default
-  std::shared_ptr<TileGroup> tile_group_p{
-    GetTileGroupWithLayout(sample_column_map,
-                           samples_for_optimizer.size(),
-                           true)
-                           };
+  // It assigns sampled_tile_group_id
+  std::shared_ptr<TileGroup> tile_group_p{BuildSampleTileGroup()};
   assert(tile_group.get());
 
   // Update current sample tile group ID, and register it with catalog manager
