@@ -73,6 +73,8 @@ static void peloton_ExecutePlan(EState *estate, PlanState *planstate,
                                 long numberTuples,
                                 ScanDirection direction,
                                 DestReceiver *dest,
+                                bool pelotonOptimized,
+                                std::shared_ptr<peloton::planner::AbstractPlan> pelotonPlan,
                                 TupleDesc tupDesc,
                                 const char *prepStmtName);
 
@@ -374,6 +376,8 @@ standard_ExecutorRun(QueryDesc *queryDesc,
 	                        count,
 	                        direction,
 	                        dest,
+                            queryDesc->plannedstmt->pelotonOptimized,
+							queryDesc->plannedstmt->pelotonPlan,
 	                        queryDesc->tupDesc,
 	                        queryDesc->prepStmtName);
 	  }
@@ -1650,12 +1654,17 @@ peloton_ExecutePlan(EState *estate,
       long numberTuples,
       ScanDirection direction,
       DestReceiver *dest,
+      bool pelotonOptimized,
+      std::shared_ptr<peloton::planner::AbstractPlan> pelotonPlan,
       TupleDesc tupDesc,
       const char *prepStmtName)
 {
 
   // TODO: Peloton Changes
-  peloton_dml(planstate, sendTuples, dest, tupDesc, prepStmtName);
+  peloton_dml(planstate, sendTuples, dest, pelotonOptimized,
+			  pelotonPlan,
+			  tupDesc,
+              prepStmtName);
 
 }
 

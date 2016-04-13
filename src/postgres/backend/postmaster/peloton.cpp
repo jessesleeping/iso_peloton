@@ -169,6 +169,8 @@ void
 peloton_dml(PlanState *planstate,
             bool sendTuples,
             DestReceiver *dest,
+            bool pelotonOptimized,
+            std::shared_ptr<peloton::planner::AbstractPlan> peloton_plan,
             TupleDesc tuple_desc,
             const char *prepStmtName) {
   peloton_status status;
@@ -181,8 +183,16 @@ peloton_dml(PlanState *planstate,
   // Create the raw planstate info
   std::shared_ptr<const peloton::planner::AbstractPlan> mapped_plan_ptr;
 
+#ifdef PELOTON_OPTIMIZER
+  elog(LOG, "Peloton Optimize? %d", pelotonOptimized);
+  if (pelotonOptimized) {
+    mapped_plan_ptr = peloton_plan;
+  }
+  if (mapped_plan_ptr.get() == nullptr && prepStmtName) {
+#else
   // Get our plan
   if (prepStmtName) {
+#endif
     mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance().GetCachedPlan(prepStmtName);
   }
 

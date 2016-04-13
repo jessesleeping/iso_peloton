@@ -67,6 +67,8 @@ extern void peloton_ddl(Node *parsetree);
 extern void peloton_dml(PlanState *planstate,
                         bool sendTuples,
                         DestReceiver *dest,
+                        bool pelotonOptimized,
+                        std::shared_ptr<peloton::planner::AbstractPlan> pelotonPlan,
                         TupleDesc tuple_desc,
                         const char *prepStmtName);
 

@@ -31,10 +31,11 @@ bool ShouldPelotonOptimize(Query *parse);
 
 std::shared_ptr<Select> PostgresQueryToPelotonQuery(Query *parse);
 
-PlannedStmt* PelotonOptimize(Optimizer &optimizer,
-                             Query *parse,
-                             int cursorOptions,
-                             ParamListInfo boundParams);
+std::shared_ptr<planner::AbstractPlan>
+PelotonOptimize(Optimizer &optimizer,
+                Query *parse,
+                int cursorOptions,
+                ParamListInfo boundParams);
 
 } /* namespace optimizer */
 } /* namespace peloton */

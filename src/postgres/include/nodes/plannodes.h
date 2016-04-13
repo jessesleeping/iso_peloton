@@ -20,6 +20,14 @@
 #include "nodes/lockoptions.h"
 #include "nodes/primnodes.h"
 
+// Peloton
+namespace peloton {
+namespace planner {
+class AbstractPlan;
+}
+}
+
+#include <memory>
 
 /* ----------------------------------------------------------------
  *						node definitions
@@ -75,6 +83,8 @@ typedef struct PlannedStmt
 	bool    pelotonQuery;  /* peloton query i.e. accesses peloton tables ? */
 
 	bool    pelotonOptimized;  /* peloton optimized */
+
+    std::shared_ptr<peloton::planner::AbstractPlan> pelotonPlan;  /* peloton */
 } PlannedStmt;
 
 /* macro for fetching the Plan associated with a SubPlan node */

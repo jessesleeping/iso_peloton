@@ -285,7 +285,8 @@ std::shared_ptr<Select> PostgresQueryToPelotonQuery(Query *parse) {
   return select_query;
 }
 
-PlannedStmt* PelotonOptimize(
+std::shared_ptr<planner::AbstractPlan>
+PelotonOptimize(
   Optimizer &optimizer,
   Query *parse,
   int cursorOptions,
@@ -305,36 +306,41 @@ PlannedStmt* PelotonOptimize(
   if (query_tree) {
     LOG_DEBUG("Succesfully converted postgres query to Peloton query");
     LOG_DEBUG("Peloton query:\n %s", PrintOperator(query_tree.get()).c_str());
+    LOG_DEBUG("Invoking peloton optimizer...");
     plan = optimizer.GeneratePlan(query_tree);
+    if (plan) {
+      LOG_DEBUG("Succesfully converted Peloton query into Peloton plan");
+    }
   }
 
-  PlannedStmt *result = nullptr;
-  if (plan) {
-    LOG_DEBUG("Created Peloton plan");
-    result = makeNode(PlannedStmt);
+  return plan;
+  // PlannedStmt *result = nullptr;
+  // if (plan) {
+  //   LOG_DEBUG("Created Peloton plan");
+  //   result = makeNode(PlannedStmt);
 
-    // result->commandType = parse->commandType;
-    // result->queryId = parse->queryId;
-    // result->hasReturning = (parse->returningList != NIL);
-    // result->hasModifyingCTE = parse->hasModifyingCTE;
-    // result->canSetTag = parse->canSetTag;
-    // result->transientPlan = glob->transientPlan;
-    // result->planTree = top_plan;
-    // result->rtable = glob->finalrtable;
-    // result->resultRelations = glob->resultRelations;
-    // result->utilityStmt = parse->utilityStmt;
-    // result->subplans = glob->subplans;
-    // result->rewindPlanIDs = glob->rewindPlanIDs;
-    // result->rowMarks = glob->finalrowmarks;
-    // result->relationOids = glob->relationOids;
-    // result->invalItems = glob->invalItems;
-    // result->nParamExec = glob->nParamExec;
-    // result->hasRowSecurity = glob->hasRowSecurity;
-    result->pelotonQuery = true;
-    result->pelotonOptimized = true;
-  }
+  //   // result->commandType = parse->commandType;
+  //   // result->queryId = parse->queryId;
+  //   // result->hasReturning = (parse->returningList != NIL);
+  //   // result->hasModifyingCTE = parse->hasModifyingCTE;
+  //   // result->canSetTag = parse->canSetTag;
+  //   // result->transientPlan = glob->transientPlan;
+  //   // result->planTree = top_plan;
+  //   // result->rtable = glob->finalrtable;
+  //   // result->resultRelations = glob->resultRelations;
+  //   // result->utilityStmt = parse->utilityStmt;
+  //   // result->subplans = glob->subplans;
+  //   // result->rewindPlanIDs = glob->rewindPlanIDs;
+  //   // result->rowMarks = glob->finalrowmarks;
+  //   // result->relationOids = glob->relationOids;
+  //   // result->invalItems = glob->invalItems;
+  //   // result->nParamExec = glob->nParamExec;
+  //   // result->hasRowSecurity = glob->hasRowSecurity;
+  //   result->pelotonQuery = true;
+  //   result->pelotonOptimized = true;
+  // }
 
-  return result;
+  //return result;
 }
 
 }

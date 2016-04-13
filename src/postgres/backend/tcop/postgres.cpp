@@ -909,21 +909,14 @@ peloton_plan_query(Query *querytree,
   if (log_planner_stats)
     ResetUsage();
 
-
-  if (peloton::optimizer::ShouldPelotonOptimize(querytree)) {
-    peloton::optimizer::Optimizer& optimizer =
-      peloton::optimizer::Optimizer::GetInstance();
-    /* call the optimizer */
-    plan = peloton::optimizer::PelotonOptimize(optimizer,
-                                               querytree,
-                                               cursorOptions,
-                                               boundParams);
-  }
   /*
    * Fall back to postgres optimizer if Peloton optimizer
    * does not return a plan.
+   * TODO: for now, we invoke the postgres planner so we can get a plan
+   *       structure that postgres can understand further down the pipeline
    */
-  if (plan == nullptr) {
+  //if (plan == nullptr) {
+  if (true) {
     /* call the optimizer */
     plan = planner(querytree, cursorOptions, boundParams);
 
@@ -933,6 +926,21 @@ peloton_plan_query(Query *querytree,
     plan->pelotonOptimized = false;
   }
   elog(DEBUG1, "Peloton query : %d \n", plan->pelotonQuery);
+
+  if (peloton::optimizer::ShouldPelotonOptimize(querytree)) {
+    peloton::optimizer::Optimizer& optimizer =
+      peloton::optimizer::Optimizer::GetInstance();
+    /* call the optimizer */
+    std::shared_ptr<peloton::planner::AbstractPlan> p_plan =
+      peloton::optimizer::PelotonOptimize(optimizer,
+                                          querytree,
+                                          cursorOptions,
+                                          boundParams);
+    if (p_plan) {
+      plan->pelotonPlan = p_plan;
+      plan->pelotonOptimized = true;
+    }
+  }
 
   if (log_planner_stats)
     ShowUsage("PLANNER STATISTICS");
