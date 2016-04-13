@@ -68,8 +68,13 @@ DataTable::DataTable(catalog::Schema *schema, const std::string &table_name,
   for (oid_t col_itr = 0; col_itr < col_count; col_itr++) {
     default_partition[col_itr] = std::make_pair(0, col_itr);
 
-    // Only maps inlined columns into samples
-    if(schema->IsInlined(col_itr) == true) {
+    ValueType column_type = schema->GetType(col_itr);
+    // Only maps inlined columns (i.e. everything not a VARCHAR
+    // or VARBINARY) into samples
+    // NOTE: These two could potentially be inlined but we simply treat them
+    // as always not inlined
+    if(column_type != VALUE_TYPE_VARCHAR && \
+       column_type != VALUE_TYPE_VARBINARY) {
       inline_column_map[col_itr] = sample_inline_column_it++;
       sample_column_mask.push_back(true);
     } else {
