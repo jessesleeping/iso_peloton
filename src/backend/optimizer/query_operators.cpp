@@ -46,7 +46,8 @@ OrderBy *OrderBy::make(
   bridge::PltFuncMetaInfo equality_fn,
   bridge::PltFuncMetaInfo sort_fn,
   bool hashable,
-  bool nulls_first)
+  bool nulls_first,
+  bool reverse)
 {
   OrderBy *order = new OrderBy;
   order->output_list_index = output_list_index;
@@ -54,6 +55,7 @@ OrderBy *OrderBy::make(
   order->sort_fn = sort_fn;
   order->hashable = hashable;
   order->nulls_first = nulls_first;
+  order->reverse = reverse;
   return order;
 }
 

@@ -84,13 +84,16 @@ struct OrderBy : OperatorNode<OrderBy> {
     bridge::PltFuncMetaInfo equality_fn,
     bridge::PltFuncMetaInfo sort_fn,
     bool hashable,
-    bool nulls_first);
+    bool nulls_first,
+    bool reverse);
 
   int output_list_index;
   bridge::PltFuncMetaInfo equality_fn;
   bridge::PltFuncMetaInfo sort_fn;
   bool hashable;
   bool nulls_first;
+
+  bool reverse;
 };
 
 //===--------------------------------------------------------------------===//

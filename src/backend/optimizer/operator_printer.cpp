@@ -27,15 +27,30 @@ std::string OperatorPrinter::print() {
 }
 
 void OperatorPrinter::visit(const TableAttribute *op) {
-  (void)op;
+  append("TableAttribute: ");
+  append("table_index " + std::to_string(op->table_list_index));
+  append(", ");
+  append("column_index " + std::to_string(op->column_index));
 }
 
 void OperatorPrinter::visit(const Table *op) {
-  (void)op;
+  append("Table: oid " + std::to_string(op->table_oid));
 }
 
 void OperatorPrinter::visit(const OrderBy *op) {
-  (void)op;
+  append("OrderBy: ");
+  append("output_column_index " + std::to_string(op->output_list_index));
+  append(", ");
+  append("equalify_fn " + ExpressionTypeToString(op->equality_fn.exprtype));
+  append(", ");
+  append("sort_fn " + ExpressionTypeToString(op->sort_fn.exprtype));
+  append(", ");
+  append("hashable " + std::to_string(op->hashable));
+  append(", ");
+  append("nulls_first " + std::to_string(op->nulls_first));
+  append(", ");
+  append("reverse " + std::to_string(op->reverse));
+
 }
 
 void OperatorPrinter::visit(const Select *op) {
@@ -43,22 +58,25 @@ void OperatorPrinter::visit(const Select *op) {
   push_header("Table list");
   for (size_t i = 0; i < op->table_list.size(); ++i) {
     Table *table = op->table_list[i].get();
-    append_line("Table: oid " + std::to_string(table->table_oid));
+    this->visit(table);
+    append_line();
   }
   pop(); // Table list
 
   push_header("Output list");
   for (size_t i = 0; i < op->output_list.size(); ++i) {
     TableAttribute *attr = op->output_list[i].get();
-    append("TableAttribute: ");
-    append("table_index " + std::to_string(attr->table_list_index));
-    append(", ");
-    append("column_index " + std::to_string(attr->column_index));
+    this->visit(attr);
     append_line();
   }
   pop(); // Output list
 
   push_header("Orderings");
+  for (size_t i = 0; i < op->orderings.size(); ++i) {
+    OrderBy *ordering = op->orderings[i].get();
+    this->visit(ordering);
+    append_line();
+  }
   pop();
 
   pop(); // Select

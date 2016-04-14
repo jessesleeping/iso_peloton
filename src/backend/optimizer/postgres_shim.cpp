@@ -23,6 +23,7 @@
 #include "storage/lock.h"
 #include "access/heapam.h"
 #include "utils/rel.h"
+#include "utils/lsyscache.h"
 #include "catalog/pg_namespace.h"
 
 namespace peloton {
@@ -50,11 +51,18 @@ OrderBy *convert_SortGroupClause(
     output_list_index++;
   }
 
+  Oid opfamily;
+  Oid opcintype;
+  int16 strategy;
+  get_ordering_op_properties(sort_clause->sortop,
+                             &opfamily, &opcintype, &strategy);
+  bool reverse = (strategy == BTGreaterStrategyNumber);
   order_op = OrderBy::make(output_list_index,
                            bridge::kPgFuncMap[sort_clause->eqop],
                            bridge::kPgFuncMap[sort_clause->sortop],
                            sort_clause->hashable,
-                           sort_clause->nulls_first);
+                           sort_clause->nulls_first,
+                           reverse);
 
   return order_op;
 }
@@ -67,8 +75,11 @@ TableAttribute *convert_TargetEntry(TargetEntry *te) {
 
   Var *var = reinterpret_cast<Var*>(te->expr);
 
+  // We subtract one because postgres indexes starting at 1
+  // but peloton starts at 0
   int table_list_index = var->varno - 1;
-  AttrNumber column_index = var->varattno;
+  oid_t column_index =
+    static_cast<oid_t>(AttrNumberGetAttrOffset(var->varattno));
   return TableAttribute::make(table_list_index, column_index);
 }
 
@@ -142,7 +153,9 @@ Select *convert_Query(Query *pg_query) {
 
       foreach(list_item, sort_list) {
         SortGroupClause *sort_clause = (SortGroupClause *) lfirst(list_item);
-        convert_SortGroupClause(sort_clause, pg_query->targetList);
+        OrderBy* order =
+          convert_SortGroupClause(sort_clause, pg_query->targetList);
+        orderings.push_back(std::shared_ptr<OrderBy>(order));
       }
     }
     // Check join tree - fail if anything more than range table references

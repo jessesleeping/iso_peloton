@@ -14,9 +14,13 @@
 
 #include "backend/planner/projection_plan.h"
 #include "backend/planner/seq_scan_plan.h"
+#include "backend/planner/order_by_plan.h"
+
 #include "backend/catalog/manager.h"
 #include "backend/bridge/ddl/bridge.h"
 #include "backend/bridge/dml/mapper/mapper.h"
+
+#include <memory>
 
 namespace peloton {
 namespace optimizer {
@@ -40,7 +44,7 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
 
   // Scan base tables
   oid_t database_oid = bridge::Bridge::GetCurrentDatabaseOid();
-  std::vector<planner::AbstractPlan*> scans;
+  std::vector<std::unique_ptr<planner::AbstractPlan>> scans;
 
   LOG_DEBUG("Generting SeqScanPlans for %lu tables",
             select_tree->table_list.size());
@@ -59,7 +63,7 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
     for (auto table_attr : select_tree->output_list)
     {
       if (table_attr->table_list_index == table_index) {
-        col_list.push_back(table_attr->column_index - 1);
+        col_list.push_back(table_attr->column_index);
       }
     }
 
@@ -70,13 +74,29 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
 
     scans.emplace_back(scan_plan);
   }
-  if (scans.size() == 1 && select_tree->orderings.size() == 0) {
-    LOG_DEBUG("Only one scan, setting final plan");
-    top_plan = scans[0];
-  } else {
-    for (planner::AbstractPlan* plan : scans) {
-      delete plan;
+  if (scans.size() == 1) {
+    LOG_DEBUG("Only one scan, setting plan");
+    if (top_plan != nullptr) {
+      top_plan->AddChild(scans[0].release());
+    } else {
+      top_plan = scans[0].release();
     }
+  } else {
+    // Exit because we can't handle multiple scans atm
+    return nullptr;
+  }
+  if (!select_tree->orderings.empty()) {
+    LOG_DEBUG("Adding OrderBy with %lu terms", select_tree->orderings.size());
+    std::vector<oid_t> sort_keys;
+    std::vector<bool> reverse_flags;
+    for (size_t i = 0; i < select_tree->orderings.size(); ++i) {
+      auto ordering = select_tree->orderings[i];
+      sort_keys.push_back(ordering->output_list_index);
+      reverse_flags.push_back(ordering->reverse);
+    }
+    auto order_by = new planner::OrderByPlan(sort_keys, reverse_flags, {});
+    order_by->AddChild(top_plan);
+    top_plan = order_by;
   }
 
   std::shared_ptr<planner::AbstractPlan> final_plan(
