@@ -1195,6 +1195,11 @@ TileGroup *DataTable::BuildSampleTileGroup() {
  *                         with actual tuples
  *
  * We always store samples in columnar format
+ *
+ * NOTE 1: Currently we do not write data through the TileGroup interface
+ * which means we directly go to Tile interface and GetValue()/SetValue()
+ * This is really bad because it circumvents all controls provided by TileGroup
+ * including MVCC
  */
 void DataTable::FillSampleTileGroup() {
   if(GetOptimizerSampleSize() == 0LU) {
@@ -1206,8 +1211,6 @@ void DataTable::FillSampleTileGroup() {
   // Get tile group for sampling table outside of
   // the loop
   auto sample_tile_group_p = GetSampleTileGroup();
-  // We start filling sample table from offset 0
-  oid_t sample_row_id = 0;
 
   // Iterate through our sampled pointers
   for(ItemPointer &item : samples_for_optimizer) {
@@ -1218,7 +1221,14 @@ void DataTable::FillSampleTileGroup() {
 
     auto tile_group_p = GetTileGroup(tile_group_offset);
 
+    // For each sampled row, we assign a row ID in the sample table
+    oid_t next_sample_row_id = sample_tile_group_p->GetHeader()->GetNextEmptyTupleSlot();
+
+    // For each column, find its position in data table, and copy its value
+    // in a value object
+    // Then find its position in the sample table, and copy it in
     for(auto &column_pair : inline_column_map) {
+      // table overall column ID and sample table overall column ID
       oid_t table_column_id = column_pair.first;
       oid_t sample_column_id = column_pair.second;
 
@@ -1236,12 +1246,30 @@ void DataTable::FillSampleTileGroup() {
       assert(table_tile_column_offset != INVALID_OID);
 
       // Then fetch the tile and get value directly from the tile
-      // since we only sample inlined data, value itself is enough for representing it
+      // since we only sample inlined data, value itself is enough
+      // for representing it
       Tile *tile_p = tile_group_p->GetTile(table_tile_offset);
-      Value temp_value = tile_p->GetValue(row_offset, table_tile_column_offset);
+      Value temp_value = tile_p->GetValue(row_offset,
+                                          table_tile_column_offset);
 
-      (void)sample_row_id;
-      (void)sample_column_id;
+      oid_t sample_tile_offset = INVALID_OID;
+      oid_t sample_tile_column_offset = INVALID_OID;
+
+      sample_tile_group_p->LocateTileAndColumn(sample_column_id,
+                                               sample_tile_offset,
+                                               sample_tile_column_offset);
+      // Because in sample tile group, all columns are stored in its own Tile
+      // object, we only have column 0 inside tile, and tile offset equals
+      // sample column offset
+      assert(sample_tile_column_offset == 0);
+      assert(sample_tile_offset == sample_column_id);
+
+      Tile *sample_tile_p = sample_tile_group_p->GetTile(sample_tile_offset);
+
+      // sample_tile_column_offset == 0
+      sample_tile_p->SetValue(temp_value,
+                              next_sample_row_id,
+                              sample_tile_column_offset);
     }
   }
 
