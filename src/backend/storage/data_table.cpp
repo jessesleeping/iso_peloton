@@ -1038,11 +1038,7 @@ std::shared_ptr<storage::TileGroup> DataTable::GetSampleTileGroup() const {
  * in order to reuse them for a different column next time
  *
  * NOTE 1: The number of samples may not be exact depending on the random
- * numbers. We return the actual number of samples taken which is the precise one
- *
- * TODO: Currently there is no concurrent control on this part. We need to
- * control how threads access this part and make sure there is no
- * undefined behavior
+ * numbers. We return the actual number of samples taken
  */
 size_t DataTable::SampleRows(size_t sample_size) {
   LOG_TRACE("Start a new sampling, size = %lu ", sample_size);
@@ -1200,6 +1196,9 @@ TileGroup *DataTable::BuildSampleTileGroup() {
  * which means we directly go to Tile interface and GetValue()/SetValue()
  * This is really bad because it circumvents all controls provided by TileGroup
  * including MVCC
+ *
+ * NOTE 2: Despite the statements above, we do make use of GetNextEmptyTupleSlot()
+ * to keep TileGroupHeader consistent with the sampling table
  */
 void DataTable::FillSampleTileGroup() {
   if(GetOptimizerSampleSize() == 0LU) {
@@ -1300,7 +1299,7 @@ void DataTable::MaterializeSample() {
   }
 
   // Create a tile group with sampling column map
-  // It assigns sampled_tile_group_id
+  // sampled_tile_group_id is assigned inside BuildSampleTileGroup()
   std::shared_ptr<TileGroup> tile_group_p{BuildSampleTileGroup()};
   assert(tile_group_p.get());
 
@@ -1309,7 +1308,8 @@ void DataTable::MaterializeSample() {
   catalog::Manager::GetInstance().AddTileGroup(sampled_tile_group_id,
                                                tile_group_p);
 
-  // TODO: Materialize samples
+  // Copy actual data into the sample table
+  FillSampleTileGroup();
 
   return;
 }
