@@ -17,80 +17,187 @@ namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
-// TableAttribute
+// QueryExpression
 //===--------------------------------------------------------------------===//
-TableAttribute *TableAttribute::make(
-  int table_list_index,
-  int column_index)
-{
-  TableAttribute *attr = new TableAttribute;
-  attr->table_list_index = table_list_index;
-  attr->column_index = column_index;
-  return attr;
+
+QueryExpression::QueryExpression() {}
+
+QueryExpression::~QueryExpression() {}
+
+const QueryExpression *QueryExpression::GetParent() const { return parent_; }
+
+//===--------------------------------------------------------------------===//
+// Variable
+//===--------------------------------------------------------------------===//
+Variable::Variable() {
 }
+
+ExpressionType Variable::GetExpressionType() const {
+  return EXPRESSION_TYPE_COLUMN_REF;
+}
+
+void Variable::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+//===--------------------------------------------------------------------===//
+// Constant
+//===--------------------------------------------------------------------===//
+Constant::Constant() {
+}
+
+ExpressionType Constant::GetExpressionType() const {
+  return EXPRESSION_TYPE_VALUE_CONSTANT;
+}
+
+void Constant::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+//===--------------------------------------------------------------------===//
+// Logical Operators
+//===--------------------------------------------------------------------===//
+AndOperator::AndOperator(const std::vector<QueryExpression *> args)
+  : args(args)
+{
+}
+
+ExpressionType AndOperator::GetExpressionType() const {
+  return EXPRESSION_TYPE_CONJUNCTION_AND;
+}
+
+void AndOperator::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+OrOperator::OrOperator(const std::vector<QueryExpression *> args)
+  : args(args)
+{
+}
+
+ExpressionType OrOperator::GetExpressionType() const {
+  return EXPRESSION_TYPE_CONJUNCTION_OR;
+}
+
+void OrOperator::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+NotOperator::NotOperator(QueryExpression *arg)
+  : arg(arg)
+{
+}
+
+ExpressionType NotOperator::GetExpressionType() const {
+  return EXPRESSION_TYPE_OPERATOR_NOT;
+}
+
+void NotOperator::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+//===--------------------------------------------------------------------===//
+// Attribute
+//===--------------------------------------------------------------------===//
+Attribute::Attribute(
+  int table_index,
+  int column_index)
+  : table_index(table_index), column_index(column_index)
+{}
+
+ExpressionType Attribute::GetExpressionType() const {
+  return EXPRESSION_TYPE_COLUMN_REF;
+}
+
+void Attribute::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+//===--------------------------------------------------------------------===//
+// QueryJoinNode
+//===--------------------------------------------------------------------===//
+
+QueryJoinNode::QueryJoinNode() {}
+
+QueryJoinNode::~QueryJoinNode() {}
+
+const QueryJoinNode *QueryJoinNode::GetParent() const { return parent_; }
 
 //===--------------------------------------------------------------------===//
 // Table
 //===--------------------------------------------------------------------===//
-Table *Table::make(oid_t table_oid) {
-  Table *table = new Table;
-  table->table_oid = table_oid;
-  return table;
+Table::Table(oid_t table_oid)
+  : table_oid(table_oid)
+{}
+
+QueryJoinNodeType Table::GetPlanNodeType() const {
+  return QueryJoinNodeType::TABLE;
+}
+
+void Table::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+//===--------------------------------------------------------------------===//
+// Join
+//===--------------------------------------------------------------------===//
+Join::Join(PelotonJoinType join_type,
+           QueryJoinNode *left_node,
+           QueryJoinNode *right_node,
+           QueryExpression *predicate)
+  : join_type(join_type),
+    left_node(left_node),
+    right_node(right_node),
+    predicate(predicate)
+{}
+
+QueryJoinNodeType Join::GetPlanNodeType() const {
+  return QueryJoinNodeType::JOIN;
+}
+
+void Join::accept(OperatorVisitor *v) const {
+  v->visit(this);
 }
 
 //===--------------------------------------------------------------------===//
 // Order By
 //===--------------------------------------------------------------------===//
-OrderBy *OrderBy::make(
+OrderBy::OrderBy(
   int output_list_index,
   bridge::PltFuncMetaInfo equality_fn,
   bridge::PltFuncMetaInfo sort_fn,
   bool hashable,
   bool nulls_first,
   bool reverse)
-{
-  OrderBy *order = new OrderBy;
-  order->output_list_index = output_list_index;
-  order->equality_fn = equality_fn;
-  order->sort_fn = sort_fn;
-  order->hashable = hashable;
-  order->nulls_first = nulls_first;
-  order->reverse = reverse;
-  return order;
+  : output_list_index(output_list_index),
+    equality_fn(equality_fn),
+    sort_fn(sort_fn),
+    hashable(hashable),
+    nulls_first(nulls_first),
+    reverse(reverse)
+{}
+
+void OrderBy::accept(OperatorVisitor *v) const {
+  v->visit(this);
 }
 
 //===--------------------------------------------------------------------===//
 // Select
 //===--------------------------------------------------------------------===//
-Select *Select::make(
-  std::vector<std::shared_ptr<Table>> table_list,
-  std::vector<std::shared_ptr<TableAttribute>> output_list,
-  std::vector<std::shared_ptr<OrderBy>> orderings)
-{
-  Select *select = new Select;
-  select->table_list = table_list;
-  select->output_list = output_list;
-  select->orderings = orderings;
-  return select;
-}
+Select::Select(
+  QueryJoinNode *join_tree,
+  QueryExpression *where_predicate,
+  const std::vector<Attribute*>& output_list,
+  const std::vector<OrderBy*>& orderings)
+  : join_tree(join_tree),
+    where_predicate(where_predicate),
+    output_list(output_list),
+    orderings(orderings)
+{}
 
-template<> void OperatorNode<TableAttribute>::accept(OperatorVisitor *v) const {
-  v->visit((const TableAttribute *)this);
+void Select::accept(OperatorVisitor *v) const {
+  v->visit(this);
 }
-template<> void OperatorNode<Table>::accept(OperatorVisitor *v) const {
-  v->visit((const Table *)this);
-}
-template<> void OperatorNode<OrderBy>::accept(OperatorVisitor *v) const {
-  v->visit((const OrderBy *)this);
-}
-template<> void OperatorNode<Select>::accept(OperatorVisitor *v) const {
-  v->visit((const Select *)this);
-}
-
-template <> std::string OperatorNode<TableAttribute>::_name = "TableAttribute";
-template <> std::string OperatorNode<Table>::_name = "Table";
-template <> std::string OperatorNode<OrderBy>::_name = "OrderBy";
-template <> std::string OperatorNode<Select>::_name = "Select";
 
 } /* namespace optimizer */
 } /* namespace peloton */

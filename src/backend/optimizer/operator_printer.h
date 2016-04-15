@@ -26,12 +26,18 @@ namespace optimizer {
 
 class OperatorPrinter : OperatorVisitor {
  public:
-  OperatorPrinter(BaseOperatorNode *op);
+  OperatorPrinter(Select *op);
 
   std::string print();
 
-  virtual void visit(const TableAttribute *);
+  virtual void visit(const Variable*);
+  virtual void visit(const Constant*);
+  virtual void visit(const AndOperator*);
+  virtual void visit(const OrOperator*);
+  virtual void visit(const NotOperator*);
+  virtual void visit(const Attribute *);
   virtual void visit(const Table *);
+  virtual void visit(const Join *);
   virtual void visit(const OrderBy *);
   virtual void visit(const Select *);
 
@@ -48,14 +54,14 @@ class OperatorPrinter : OperatorVisitor {
 
   void pop();
 
-  BaseOperatorNode *op_;
+  Select *op_;
 
   int depth_;
   std::string printed_op_;
   bool new_line_;
 };
 
-std::string PrintOperator(BaseOperatorNode *op);
+std::string PrintOperator(Select *op);
 
 } /* namespace optimizer */
 } /* namespace peloton */

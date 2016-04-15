@@ -27,6 +27,13 @@ namespace optimizer {
 // Compatibility with Postgres
 //===--------------------------------------------------------------------===//
 
+// class PostgresQueryConverter {
+//  public:
+//   PostgresQueryConverter();
+
+//  private:
+// };
+
 bool ShouldPelotonOptimize(Query *parse);
 
 std::shared_ptr<Select> PostgresQueryToPelotonQuery(Query *parse);

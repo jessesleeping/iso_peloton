@@ -23,9 +23,66 @@
 namespace peloton {
 namespace optimizer {
 
+enum class QueryJoinNodeType {
+  TABLE,
+  JOIN,
+};
+
+//===--------------------------------------------------------------------===//
+// QueryExpression
+//===--------------------------------------------------------------------===//
+struct QueryExpression {
+  QueryExpression(const QueryExpression &) = delete;
+  QueryExpression &operator=(const QueryExpression &) = delete;
+  QueryExpression(QueryExpression &&) = delete;
+  QueryExpression &operator=(QueryExpression &&) = delete;
+
+  QueryExpression();
+
+  virtual ~QueryExpression();
+
+  //===--------------------------------------------------------------------===//
+  // Parent Helpers
+  //===--------------------------------------------------------------------===//
+
+  const QueryExpression *GetParent() const;
+
+  //===--------------------------------------------------------------------===//
+  // Accessors
+  //===--------------------------------------------------------------------===//
+
+  virtual ExpressionType GetExpressionType() const = 0;
+
+  virtual void accept(OperatorVisitor *v) const = 0;
+
+ private:
+  QueryExpression *parent_ = nullptr;
+};
+
+//===--------------------------------------------------------------------===//
+// Variable
+//===--------------------------------------------------------------------===//
+struct Variable : QueryExpression {
+  Variable();
+
+  virtual ExpressionType GetExpressionType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+};
+
 //===--------------------------------------------------------------------===//
 // Constant
 //===--------------------------------------------------------------------===//
+struct Constant : QueryExpression {
+  Constant();
+
+  virtual ExpressionType GetExpressionType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+};
+
 // struct Constant : OperatorNode<Constant> {
 //   static Operator make(Value v);
 
@@ -33,22 +90,93 @@ namespace optimizer {
 // };
 
 //===--------------------------------------------------------------------===//
-// TableAttribute
+// Logical Operators
 //===--------------------------------------------------------------------===//
-struct TableAttribute : OperatorNode<TableAttribute> {
-  static TableAttribute *make(
-    int table_list_index,
-    int column_index);
+struct AndOperator : QueryExpression {
+  AndOperator(const std::vector<QueryExpression *> args);
 
-  int table_list_index;
+  virtual ExpressionType GetExpressionType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+  std::vector<QueryExpression *> args;
+};
+
+struct OrOperator : QueryExpression {
+  OrOperator(const std::vector<QueryExpression *> args);
+
+  virtual ExpressionType GetExpressionType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+  std::vector<QueryExpression *> args;
+};
+
+struct NotOperator : QueryExpression {
+  NotOperator(QueryExpression *arg);
+
+  virtual ExpressionType GetExpressionType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+  QueryExpression *arg;
+};
+
+
+//===--------------------------------------------------------------------===//
+// Attribute
+//===--------------------------------------------------------------------===//
+struct Attribute : QueryExpression {
+  Attribute(int table_index, int column_index);
+
+  virtual ExpressionType GetExpressionType() const override;
+
+  void accept(OperatorVisitor *v) const override;
+
+  int table_index;
   int column_index;
+};
+
+//===--------------------------------------------------------------------===//
+// QueryJoinNode
+//===--------------------------------------------------------------------===//
+struct QueryJoinNode {
+  QueryJoinNode(const QueryJoinNode &) = delete;
+  QueryJoinNode &operator=(const QueryJoinNode &) = delete;
+  QueryJoinNode(QueryJoinNode &&) = delete;
+  QueryJoinNode &operator=(QueryJoinNode &&) = delete;
+
+  QueryJoinNode();
+
+  virtual ~QueryJoinNode();
+
+  //===--------------------------------------------------------------------===//
+  // Parent Helpers
+  //===--------------------------------------------------------------------===//
+
+  const QueryJoinNode *GetParent() const;
+
+  //===--------------------------------------------------------------------===//
+  // Accessors
+  //===--------------------------------------------------------------------===//
+
+  virtual QueryJoinNodeType GetPlanNodeType() const = 0;
+
+  virtual void accept(OperatorVisitor *v) const = 0;
+
+ private:
+  QueryJoinNode *parent_ = nullptr;
 };
 
 //===--------------------------------------------------------------------===//
 // Table
 //===--------------------------------------------------------------------===//
-struct Table : OperatorNode<Table> {
-  static Table *make(oid_t table_oid);
+struct Table : QueryJoinNode {
+  Table(oid_t table_oid);
+
+  virtual QueryJoinNodeType GetPlanNodeType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
 
   oid_t table_oid;
 };
@@ -56,15 +184,21 @@ struct Table : OperatorNode<Table> {
 //===--------------------------------------------------------------------===//
 // Join
 //===--------------------------------------------------------------------===//
-// struct Join : OperatorNode<Join> {
-//   static Join *make(PelotonJoinType join_type,
-//                     int left_table,
-//                     Attribute left_attribute,
-//                     int right_table,
-//                     Attribute right_attribute,);
+struct Join : QueryJoinNode {
+  Join(PelotonJoinType join_type,
+       QueryJoinNode *left_node,
+       QueryJoinNode *right_node,
+       QueryExpression *predicate);
 
-//   PelotonJoinType join_type;
-// };
+  virtual QueryJoinNodeType GetPlanNodeType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+  PelotonJoinType join_type;
+  QueryJoinNode *left_node;
+  QueryJoinNode *right_node;
+  QueryExpression *predicate;
+};
 
 //===--------------------------------------------------------------------===//
 // Group By
@@ -78,14 +212,16 @@ struct Table : OperatorNode<Table> {
 //===--------------------------------------------------------------------===//
 // Order By
 //===--------------------------------------------------------------------===//
-struct OrderBy : OperatorNode<OrderBy> {
-  static OrderBy *make(
+struct OrderBy {
+  OrderBy(
     int output_list_index,
     bridge::PltFuncMetaInfo equality_fn,
     bridge::PltFuncMetaInfo sort_fn,
     bool hashable,
     bool nulls_first,
     bool reverse);
+
+  void accept(OperatorVisitor *v) const;
 
   int output_list_index;
   bridge::PltFuncMetaInfo equality_fn;
@@ -99,15 +235,18 @@ struct OrderBy : OperatorNode<OrderBy> {
 //===--------------------------------------------------------------------===//
 // Select
 //===--------------------------------------------------------------------===//
-struct Select : OperatorNode<Select> {
-  static Select *make(
-    std::vector<std::shared_ptr<Table>> table_list,
-    std::vector<std::shared_ptr<TableAttribute>> output_list,
-    std::vector<std::shared_ptr<OrderBy>> orderings);
+struct Select {
+  Select(QueryJoinNode *join_tree,
+         QueryExpression *where_predicate,
+         const std::vector<Attribute *>& output_list,
+         const std::vector<OrderBy *>& orderings);
 
-  std::vector<std::shared_ptr<Table>> table_list;
-  std::vector<std::shared_ptr<TableAttribute>> output_list;
-  std::vector<std::shared_ptr<OrderBy>> orderings;
+  void accept(OperatorVisitor *v) const;
+
+  QueryJoinNode *join_tree;
+  QueryExpression *where_predicate;
+  std::vector<Attribute *> output_list;
+  std::vector<OrderBy *> orderings;
 };
 
 //===--------------------------------------------------------------------===//
