@@ -847,6 +847,52 @@ PlanNodeType StringToPlanNodeType(std::string str) {
   }
   return PLAN_NODE_TYPE_INVALID;
 }
+
+//===--------------------------------------------------------------------===//
+// Peloton Join Type - String Utilities
+//===--------------------------------------------------------------------===//
+
+std::string PelotonJoinTypeToString(PelotonJoinType type) {
+  switch (type) {
+    case JOIN_TYPE_INVALID: {
+      return "INVALID";
+    }
+    case JOIN_TYPE_LEFT: {
+      return "LEFT";
+    }
+    case JOIN_TYPE_RIGHT: {
+      return "RIGHT";
+    }
+    case JOIN_TYPE_INNER: {
+      return "INNER";
+    }
+    case JOIN_TYPE_OUTER: {
+      return "OUTER";
+    }
+    case JOIN_TYPE_SEMI: {
+      return "SEMI";
+    }
+  }
+  return "INVALID";
+}
+
+PelotonJoinType StringToPelotonJoinType(std::string str) {
+  if (str == "INVALID") {
+    return JOIN_TYPE_INVALID;
+  } else if (str == "LEFT") {
+    return JOIN_TYPE_LEFT;
+  } else if (str == "RIGHT") {
+    return JOIN_TYPE_RIGHT;
+  } else if (str == "INNER") {
+    return JOIN_TYPE_INNER;
+  } else if (str == "OUTER") {
+    return JOIN_TYPE_OUTER;
+  } else if (str == "SEMI") {
+    return JOIN_TYPE_SEMI;
+  }
+  return JOIN_TYPE_INVALID;
+}
+
 //===--------------------------------------------------------------------===//
 // Constraint Type - String Utilities
 //===--------------------------------------------------------------------===//

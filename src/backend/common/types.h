@@ -796,6 +796,9 @@ IndexType StringToIndexType(std::string str);
 std::string PlanNodeTypeToString(PlanNodeType type);
 PlanNodeType StringToPlanNodeType(std::string str);
 
+std::string PelotonJoinTypeToString(PelotonJoinType type);
+PelotonJoinType StringToPelotonJoinType(std::string str);
+
 std::string ConstraintTypeToString(ConstraintType type);
 ConstraintType StringToConstraintType(std::string str);
 
