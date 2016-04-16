@@ -6,6 +6,7 @@
 
 optimizer_FILES = \
 				backend/optimizer/postgres_shim.cpp \
+				backend/optimizer/query_transformer.cpp \
 				backend/optimizer/optimizer.cpp \
 				backend/optimizer/operator_node.cpp \
 				backend/optimizer/query_operators.cpp \
