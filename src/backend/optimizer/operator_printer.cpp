@@ -37,19 +37,38 @@ void OperatorPrinter::visit(const Constant *op) {
   (void)op;
 }
 
+void OperatorPrinter::visit(const OperatorExpression* op) {
+  push_header("OperatorExpression, type: " +
+              ExpressionTypeToString(op->type));
+  for (QueryExpression *e : op->args) {
+    e->accept(this);
+    append_line();
+  }
+  pop(); // OperatorExpression
+}
+
 void OperatorPrinter::visit(const AndOperator *op) {
-  append("And");
-  (void)op;
+  push_header("And");
+  for (QueryExpression *e : op->args) {
+    e->accept(this);
+    append_line();
+  }
+  pop(); // And
 }
 
 void OperatorPrinter::visit(const OrOperator *op) {
-  append("Or");
-  (void)op;
+  push_header("Or");
+  for (QueryExpression *e : op->args) {
+    e->accept(this);
+    append_line();
+  }
+  pop(); // Or
 }
 
 void OperatorPrinter::visit(const NotOperator *op) {
-  append("Not");
-  (void)op;
+  push_header("Not");
+  op->arg->accept(this);
+  pop();
 }
 
 void OperatorPrinter::visit(const Attribute *op) {
@@ -64,13 +83,15 @@ void OperatorPrinter::visit(const Table *op) {
 }
 
 void OperatorPrinter::visit(const Join *op) {
-  append_line("Join: type " + PelotonJoinTypeToString(op->join_type));
-  append_line("Left child");
+  push_header("Join: type " + PelotonJoinTypeToString(op->join_type));
+  push_header("Left child");
   op->left_node->accept(this);
   pop(); // Left child
-  append_line("Right child");
+  push_header("Right child");
   op->right_node->accept(this);
   pop(); // Right child
+  push_header("Predicate");
+  op->predicate->accept(this);
   pop(); // Join
 }
 
@@ -92,12 +113,20 @@ void OperatorPrinter::visit(const OrderBy *op) {
 
 void OperatorPrinter::visit(const Select *op) {
   push_header("Select");
+
+  push_header("Join Tree");
   if (op->join_tree) {
-    push_header("Join Tree");
     op->join_tree->accept(this);
     append_line();
-    pop(); // Join Tree
   }
+  pop(); // Join Tree
+
+  push_header("Where Predicate");
+  if (op->where_predicate) {
+    op->where_predicate->accept(this);
+    append_line();
+  }
+  pop(); // Where predicate
 
   push_header("Output list");
   for (size_t i = 0; i < op->output_list.size(); ++i) {
@@ -129,8 +158,10 @@ void OperatorPrinter::append(const std::string &string) {
 }
 
 void OperatorPrinter::append_line(const std::string &string) {
-  append(string + "\n");
-  new_line_ = true;
+  if (!new_line_ || string != "") {
+    append(string + "\n");
+    new_line_ = true;
+  }
 }
 
 void OperatorPrinter::append_line() {

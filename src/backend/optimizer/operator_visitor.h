@@ -17,6 +17,7 @@ namespace optimizer {
 
 class Variable;
 class Constant;
+class OperatorExpression;
 class AndOperator;
 class OrOperator;
 class NotOperator;
@@ -36,6 +37,7 @@ class OperatorVisitor {
 
   virtual void visit(const Variable*) = 0;
   virtual void visit(const Constant*) = 0;
+  virtual void visit(const OperatorExpression*) = 0;
   virtual void visit(const AndOperator*) = 0;
   virtual void visit(const OrOperator*) = 0;
   virtual void visit(const NotOperator*) = 0;

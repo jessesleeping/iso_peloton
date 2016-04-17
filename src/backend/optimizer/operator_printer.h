@@ -32,6 +32,7 @@ class OperatorPrinter : OperatorVisitor {
 
   virtual void visit(const Variable*);
   virtual void visit(const Constant*);
+  virtual void visit(const OperatorExpression*);
   virtual void visit(const AndOperator*);
   virtual void visit(const OrOperator*);
   virtual void visit(const NotOperator*);

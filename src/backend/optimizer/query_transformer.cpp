@@ -18,6 +18,9 @@
 #include "backend/optimizer/query_transformer.h"
 #include "backend/optimizer/query_operators.h"
 #include "backend/optimizer/operator_printer.h"
+#include "backend/catalog/manager.h"
+#include "backend/common/value_factory.h"
+#include "backend/bridge/dml/tuple/tuple_transformer.h"
 
 #include "access/attnum.h"
 #include "miscadmin.h"
@@ -34,11 +37,46 @@ namespace optimizer {
 // QueryTransformer
 //===--------------------------------------------------------------------===//
 
-QueryTransformer::QueryTransformer() {
-}
+QueryTransformer::QueryTransformer()
+  : database_oid(bridge::Bridge::GetCurrentDatabaseOid())
+{}
 
 Select *QueryTransformer::Transform(Query *pg_query) {
   return ConvertQuery(pg_query);
+}
+
+oid_t QueryTransformer::FindTupleIndex(oid_t base_table_oid) {
+  // Check left table
+  for (size_t i = 0; i < left_tables.size(); ++i) {
+    if (left_tables[i]->table_oid == base_table_oid)
+      return 0;
+  }
+  for (size_t i = 0; i < right_tables.size(); ++i) {
+    if (right_tables[i]->table_oid == base_table_oid)
+      return 1;
+  }
+  assert(false);
+  return 2;
+}
+
+std::vector<Table *> QueryTransformer::GetJoinNodeTables(
+  QueryJoinNode *expr)
+{
+  if (expr->GetPlanNodeType() == QueryJoinNodeType::TABLE) {
+    return {static_cast<Table *>(expr)};
+  } else if (expr->GetPlanNodeType() == QueryJoinNodeType::JOIN) {
+    Join *join = static_cast<Join *>(expr);
+
+    std::vector<Table *> tables(join->left_node_tables.begin(),
+                                join->left_node_tables.end());
+    tables.insert(tables.end(),
+                  join->right_node_tables.begin(),
+                  join->right_node_tables.end());
+    return tables;
+  } else {
+    assert(false);
+  }
+  return {};
 }
 
 PelotonJoinType QueryTransformer::TransformJoinType(
@@ -60,17 +98,52 @@ PelotonJoinType QueryTransformer::TransformJoinType(
   }
 }
 
-QueryExpression *QueryTransformer::ConvertVar(Var *expr) {
-  (void)expr;
-  return nullptr;
+Variable *QueryTransformer::ConvertVar(Var *expr) {
+  LOG_DEBUG("Converting Var");
+  // Find range table corresponding to this var
+  int rte_index = expr->varno - 1;
+  RangeTblEntry *rte = rte_entries[rte_index];
+
+  oid_t base_table_oid = rte->relid;
+  oid_t base_table_column_index =
+    static_cast<oid_t>(AttrNumberGetAttrOffset(expr->varattno));
+
+  // varattno of zero is entire row, which shouldn't happen as we already
+  // went through the analyzer which should expand rows
+  if (!AttributeNumberIsValid(expr->varattno) ||
+      !AttrNumberIsForUserDefinedAttr(expr->varattno)) {
+    return nullptr;
+  }
+
+  oid_t tuple_index = FindTupleIndex(base_table_oid);
+
+  return new Variable(tuple_index, /* unused for now */0, base_table_oid,
+                      base_table_column_index);
 }
 
-QueryExpression *QueryTransformer::ConvertConst(Const *expr) {
-  (void)expr;
-  return nullptr;
+Constant *QueryTransformer::ConvertConst(Const *expr) {
+  LOG_DEBUG("Converting Const");
+  Constant *constant = nullptr;
+  if (expr->constisnull) {
+    Value val = ValueFactory::GetNullValue();
+    constant = new Constant(val);
+  } else if (expr->constbyval) {
+    Value val =
+      bridge::TupleTransformer::GetValue(expr->constvalue, expr->consttype);
+    constant = new Constant(val);
+  } else {
+    LOG_DEBUG("Could not convert Const: "
+              "constlen = %d, constbyval = %d, constvalue = %lu",
+              expr->constlen,
+              expr->constbyval,
+              (long unsigned)expr->constvalue);
+  }
+
+  return constant;
 }
 
 QueryExpression *QueryTransformer::ConvertBoolExpr(BoolExpr *expr) {
+  LOG_DEBUG("Converting BoolExpr");
   QueryExpression *query_expression = nullptr;
 
   std::vector<QueryExpression *> args;
@@ -97,9 +170,38 @@ QueryExpression *QueryTransformer::ConvertBoolExpr(BoolExpr *expr) {
   return query_expression;
 }
 
-QueryExpression *QueryTransformer::ConvertOpExpr(OpExpr *expr) {
-  (void)expr;
-  return nullptr;
+OperatorExpression *QueryTransformer::ConvertOpExpr(OpExpr *expr) {
+  LOG_DEBUG("Converting OpExpr");
+
+  std::vector<std::unique_ptr<QueryExpression>> args;
+  ListCell *cell;
+  foreach(cell, expr->args) {
+    args.emplace_back(ConvertPostgresExpression((Node *)lfirst(cell)));
+  }
+
+  assert(expr->opfuncid != 0);
+
+  // Perform lookup
+  auto itr = bridge::kPgFuncMap.find(expr->opfuncid);
+
+  if (itr == bridge::kPgFuncMap.end()) {
+    LOG_DEBUG("Unsupported PG Op Function ID : %u (check fmgrtab.cpp)",
+              expr->opfuncid);
+    return nullptr;
+  }
+
+  bridge::PltFuncMetaInfo func_meta = itr->second;
+
+  if (func_meta.exprtype == EXPRESSION_TYPE_CAST) {
+    // TODO(abpoms): figure out what to do with cast
+    return nullptr;
+  }
+
+  std::vector<QueryExpression* > ptr_args;
+  for (auto& e : args) {
+    ptr_args.push_back(e.release());
+  }
+  return new OperatorExpression(func_meta.exprtype, ptr_args);
 }
 
 QueryExpression *QueryTransformer::ConvertPostgresExpression(
@@ -124,6 +226,7 @@ QueryExpression *QueryTransformer::ConvertPostgresExpression(
       break;
     }
     default: {
+      LOG_DEBUG("Failed to convert PostgresExpresion of type %d", expr->type);
     }
   }
   return query_expression;
@@ -133,6 +236,7 @@ OrderBy *QueryTransformer::ConvertSortGroupClause(
   SortGroupClause *sort_clause,
   List *targetList)
 {
+  LOG_DEBUG("Converting SortGroupClause");
   OrderBy *order_op = nullptr;
 
   // Find the output this sort clause corresponds to
@@ -163,6 +267,7 @@ OrderBy *QueryTransformer::ConvertSortGroupClause(
 }
 
 Attribute *QueryTransformer::ConvertTargetEntry(TargetEntry *te) {
+  LOG_DEBUG("Converting TargetEntry");
   // Fail if the target is anything other than basic column reference
   if (te->resorigtbl == 0) return nullptr;
 
@@ -179,11 +284,15 @@ Attribute *QueryTransformer::ConvertTargetEntry(TargetEntry *te) {
 }
 
 Table *QueryTransformer::ConvertRangeTblEntry(RangeTblEntry *rte) {
+  LOG_DEBUG("Converting RangeTblEntry");
   Table *table = nullptr;
   switch (rte->rtekind) {
   case RTE_RELATION: {
     if (rte->relkind == RELKIND_RELATION) {
-      table = new Table(rte->relid);
+      storage::DataTable *data_table = static_cast<storage::DataTable *>(
+          catalog::Manager::GetInstance().GetTableWithOid(database_oid,
+                                                          rte->relid));
+      table = new Table(rte->relid, data_table);
     }
     break;
   }
@@ -194,41 +303,68 @@ Table *QueryTransformer::ConvertRangeTblEntry(RangeTblEntry *rte) {
 }
 
 QueryJoinNode *QueryTransformer::ConvertRangeTblRef(RangeTblRef *expr) {
+  LOG_DEBUG("Converting RangeTblRef");
   int rte_index = expr->rtindex - 1;
   RangeTblEntry *rte = rte_entries[rte_index];
   assert(rte->rtekind == RTE_RELATION);
-  return new Table(rte->relid);
+
+  storage::DataTable *data_table = static_cast<storage::DataTable *>(
+    catalog::Manager::GetInstance().GetTableWithOid(database_oid, rte->relid));
+  return new Table(rte->relid, data_table);
 }
 
 QueryJoinNode *QueryTransformer::ConvertJoinExpr(JoinExpr *expr) {
+  LOG_DEBUG("Converting JoinExpr");
   // Don't support natural queries yet
-  if (expr->isNatural) return nullptr;
+  if (expr->isNatural) {
+    LOG_DEBUG("Convert failure: JoinExpr isNatural");
+    return nullptr;
+  }
 
   // Don't support using yet
-  if (expr->usingClause) return nullptr;
+  if (expr->usingClause) {
+    LOG_DEBUG("Convert failure: JoinExpr usingClause");
+    return nullptr;
+  }
 
   // Don't support alias yet
-  if (expr->alias) return nullptr;
+  if (expr->alias) {
+    LOG_DEBUG("Convert failure: JoinExpr alias");
+    return nullptr;
+  }
 
   PelotonJoinType join_type = TransformJoinType(expr->jointype);
 
   QueryJoinNode *left_child = ConvertFromTreeNode(expr->larg);
-  if (left_child == nullptr) return nullptr;
+  if (left_child == nullptr) {
+    LOG_DEBUG("Convert failure: JoinExpr left_child == nullptr");
+    return nullptr;
+  }
+  // Track all tables from left child
+  left_tables = GetJoinNodeTables(left_child);
 
   QueryJoinNode *right_child = ConvertFromTreeNode(expr->rarg);
-  if (right_child == nullptr) return nullptr;
+  if (right_child == nullptr) {
+    LOG_DEBUG("Convert failure: JoinExpr right_child == nullptr");
+    return nullptr;
+  }
+  // Track all tables from right child
+  right_tables = GetJoinNodeTables(right_child);
 
   // Get join predicate
   QueryExpression *predicate = ConvertPostgresExpression(expr->quals);
-  if (predicate == nullptr) return nullptr;
+  if (predicate == nullptr) {
+    LOG_DEBUG("Convert failure: JoinExpr predicate == nullptr");
+    return nullptr;
+  }
 
-  Join *join = new Join(join_type, left_child, right_child, predicate);
+  Join *join = new Join(join_type, left_child, right_child, predicate,
+                        left_tables, right_tables);
 
   return join;
 }
 
-QueryJoinNode *QueryTransformer::ConvertFromTreeNode(Node *node)
-{
+QueryJoinNode *QueryTransformer::ConvertFromTreeNode(Node *node) {
   QueryJoinNode *join_node = nullptr;
   switch (node->type) {
     case T_RangeTblRef: {
@@ -247,6 +383,7 @@ QueryJoinNode *QueryTransformer::ConvertFromTreeNode(Node *node)
 
 std::pair<QueryJoinNode *, QueryExpression *>
 QueryTransformer::ConvertFromExpr(FromExpr *from) {
+  LOG_DEBUG("Converting FromExpr");
   // Wha?
   if (from->fromlist == nullptr) {
     return {nullptr, nullptr};
@@ -265,12 +402,35 @@ QueryTransformer::ConvertFromExpr(FromExpr *from) {
       join_node =
         ConvertFromTreeNode((Node *)lfirst(list_head(from->fromlist)));
   }
+  if (join_node == nullptr) {
+    return {nullptr, nullptr};
+  }
+  left_tables = GetJoinNodeTables(join_node);
 
   QueryExpression *where_predicate = nullptr;
   if (from->quals) {
-    where_predicate = ConvertPostgresExpression(from->quals);
-    if (where_predicate == nullptr) {
+    if (from->quals->type != T_List) {
       return {nullptr, nullptr};
+    }
+
+    std::vector<std::unique_ptr<QueryExpression>> predicates;
+    ListCell *cell;
+    const List *qual_list = reinterpret_cast<List *>(from->quals);
+    foreach(cell, qual_list) {
+      predicates.emplace_back(
+        ConvertPostgresExpression(reinterpret_cast<Node *>(lfirst(cell))));
+      if (predicates.back() == nullptr) {
+        return {nullptr, nullptr};
+      }
+    }
+    if (predicates.size() == 1) {
+      where_predicate = predicates[0].release();
+    } else {
+      std::vector<QueryExpression *> args;
+      for (auto& e : predicates) {
+        args.push_back(e.release());
+      }
+      where_predicate = new AndOperator(args);
     }
   }
 
@@ -280,6 +440,7 @@ QueryTransformer::ConvertFromExpr(FromExpr *from) {
 Select *QueryTransformer::ConvertQuery(Query *pg_query) {
   Select *query = nullptr;
   if (pg_query->commandType == CMD_SELECT) {
+    LOG_DEBUG("Converting Query of type CMD_SELECT");
     // Check if aggregate - fail for now
     if (pg_query->hasAggs) return query;
     // Check if WINDOW functions - fail for now
@@ -328,6 +489,7 @@ Select *QueryTransformer::ConvertQuery(Query *pg_query) {
     }
 
     // Convert join tree
+    LOG_DEBUG("Converting Query jointree");
     auto join_and_where_pred = ConvertFromExpr(pg_query->jointree);
     std::unique_ptr<QueryJoinNode> join_tree(
       join_and_where_pred.first);
@@ -337,6 +499,7 @@ Select *QueryTransformer::ConvertQuery(Query *pg_query) {
 
     std::vector<std::unique_ptr<Attribute>> output_list;
     // Convert target list
+    LOG_DEBUG("Converting Query targetList");
     foreach(o_target, pg_query->targetList) {
       TargetEntry *tle = static_cast<TargetEntry*>(lfirst(o_target));
 
@@ -350,6 +513,7 @@ Select *QueryTransformer::ConvertQuery(Query *pg_query) {
     }
 
     // Convert sort clauses
+    LOG_DEBUG("Converting Query sortClauses");
     std::vector<std::unique_ptr<OrderBy>> orderings;
     if (pg_query->sortClause) {
       List *sort_list = pg_query->sortClause;

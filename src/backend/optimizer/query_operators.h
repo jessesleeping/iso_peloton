@@ -15,7 +15,10 @@
 #include "backend/optimizer/operator_node.h"
 
 #include "backend/common/types.h"
+#include "backend/common/value.h"
+#include "backend/storage/data_table.h"
 #include "backend/bridge/dml/expr/pg_func_map.h"
+#include "backend/catalog/schema.h"
 
 #include <vector>
 #include <memory>
@@ -63,31 +66,47 @@ struct QueryExpression {
 // Variable
 //===--------------------------------------------------------------------===//
 struct Variable : QueryExpression {
-  Variable();
+  Variable(oid_t tuple_index, oid_t column_index,
+           oid_t base_table, oid_t base_table_column_index);
 
   virtual ExpressionType GetExpressionType() const override;
 
   virtual void accept(OperatorVisitor *v) const override;
 
+  oid_t tuple_index;
+  oid_t column_index;
+
+  oid_t base_table_oid;
+  oid_t base_table_column_index;
 };
 
 //===--------------------------------------------------------------------===//
 // Constant
 //===--------------------------------------------------------------------===//
 struct Constant : QueryExpression {
-  Constant();
+  Constant(Value value);
 
   virtual ExpressionType GetExpressionType() const override;
 
   virtual void accept(OperatorVisitor *v) const override;
 
+  Value value;
 };
 
-// struct Constant : OperatorNode<Constant> {
-//   static Operator make(Value v);
+//===--------------------------------------------------------------------===//
+// OperatorExpression - matches with Peloton's operator_expression.h
+//===--------------------------------------------------------------------===//
+struct OperatorExpression : QueryExpression {
+  OperatorExpression(peloton::ExpressionType type,
+                     const std::vector<QueryExpression *>& args);
 
-//   Value value;
-// };
+  virtual ExpressionType GetExpressionType() const override;
+
+  virtual void accept(OperatorVisitor *v) const override;
+
+  peloton::ExpressionType type;
+  std::vector<QueryExpression *> args;
+};
 
 //===--------------------------------------------------------------------===//
 // Logical Operators
@@ -172,13 +191,14 @@ struct QueryJoinNode {
 // Table
 //===--------------------------------------------------------------------===//
 struct Table : QueryJoinNode {
-  Table(oid_t table_oid);
+  Table(oid_t table_oid, storage::DataTable *data_table);
 
   virtual QueryJoinNodeType GetPlanNodeType() const override;
 
   virtual void accept(OperatorVisitor *v) const override;
 
   oid_t table_oid;
+  storage::DataTable *data_table;
 };
 
 //===--------------------------------------------------------------------===//
@@ -188,16 +208,35 @@ struct Join : QueryJoinNode {
   Join(PelotonJoinType join_type,
        QueryJoinNode *left_node,
        QueryJoinNode *right_node,
-       QueryExpression *predicate);
+       QueryExpression *predicate,
+       const std::vector<Table *>& left_tables,
+       const std::vector<Table *>& right_tables);
 
   virtual QueryJoinNodeType GetPlanNodeType() const override;
 
   virtual void accept(OperatorVisitor *v) const override;
 
   PelotonJoinType join_type;
+
   QueryJoinNode *left_node;
+
   QueryJoinNode *right_node;
+
   QueryExpression *predicate;
+
+  /* Mapping from output attribute index to input attribute source
+   *
+   * Each element in the vector is a pair where the first oid_t
+   * corresponds to which input it came from (0 for left, 1 for right)
+   * and the second oid_t corresponds to which attribute in that input
+   */
+  std::vector<std::pair<oid_t, oid_t>> output_attribute_mapping;
+
+  // List of all base relations in left node
+  std::vector<Table *> left_node_tables;
+
+  // List of all base relations in right node
+  std::vector<Table *> right_node_tables;
 };
 
 //===--------------------------------------------------------------------===//

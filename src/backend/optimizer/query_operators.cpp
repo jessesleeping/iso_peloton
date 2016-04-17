@@ -29,7 +29,13 @@ const QueryExpression *QueryExpression::GetParent() const { return parent_; }
 //===--------------------------------------------------------------------===//
 // Variable
 //===--------------------------------------------------------------------===//
-Variable::Variable() {
+Variable::Variable(oid_t tuple_index, oid_t column_index,
+                   oid_t base_table_oid, oid_t base_table_column_index)
+  : tuple_index(tuple_index),
+    column_index(column_index),
+    base_table_oid(base_table_oid),
+    base_table_column_index(base_table_column_index)
+{
 }
 
 ExpressionType Variable::GetExpressionType() const {
@@ -43,14 +49,32 @@ void Variable::accept(OperatorVisitor *v) const {
 //===--------------------------------------------------------------------===//
 // Constant
 //===--------------------------------------------------------------------===//
-Constant::Constant() {
-}
+Constant::Constant(Value value)
+  : value(value)
+{}
 
 ExpressionType Constant::GetExpressionType() const {
   return EXPRESSION_TYPE_VALUE_CONSTANT;
 }
 
 void Constant::accept(OperatorVisitor *v) const {
+  v->visit(this);
+}
+
+//===--------------------------------------------------------------------===//
+// OperatorExpression - matches with Peloton's operator_expression.h
+//===--------------------------------------------------------------------===//
+OperatorExpression::OperatorExpression(
+  peloton::ExpressionType type,
+  const std::vector<QueryExpression *>& args)
+  : type(type), args(args)
+{}
+
+ExpressionType OperatorExpression::GetExpressionType() const {
+  return type;
+}
+
+void OperatorExpression::accept(OperatorVisitor *v) const {
   v->visit(this);
 }
 
@@ -126,8 +150,8 @@ const QueryJoinNode *QueryJoinNode::GetParent() const { return parent_; }
 //===--------------------------------------------------------------------===//
 // Table
 //===--------------------------------------------------------------------===//
-Table::Table(oid_t table_oid)
-  : table_oid(table_oid)
+Table::Table(oid_t table_oid, storage::DataTable *data_table)
+  : table_oid(table_oid), data_table(data_table)
 {}
 
 QueryJoinNodeType Table::GetPlanNodeType() const {
@@ -144,11 +168,15 @@ void Table::accept(OperatorVisitor *v) const {
 Join::Join(PelotonJoinType join_type,
            QueryJoinNode *left_node,
            QueryJoinNode *right_node,
-           QueryExpression *predicate)
+           QueryExpression *predicate,
+           const std::vector<Table *>& left_tables,
+           const std::vector<Table *>& right_tables)
   : join_type(join_type),
     left_node(left_node),
     right_node(right_node),
-    predicate(predicate)
+    predicate(predicate),
+    left_node_tables(left_tables),
+    right_node_tables(right_tables)
 {}
 
 QueryJoinNodeType Join::GetPlanNodeType() const {
