@@ -232,6 +232,38 @@ QueryExpression *QueryTransformer::ConvertPostgresExpression(
   return query_expression;
 }
 
+QueryExpression *QueryTransformer::ConvertPostgresQuals(
+  Node *quals)
+{
+  if (quals->type != T_List) {
+    return nullptr;
+  }
+
+  QueryExpression *predicate = nullptr;
+
+  std::vector<std::unique_ptr<QueryExpression>> predicates;
+  ListCell *cell;
+  const List *qual_list = reinterpret_cast<List *>(quals);
+  foreach(cell, qual_list) {
+    predicates.emplace_back(
+      ConvertPostgresExpression(reinterpret_cast<Node *>(lfirst(cell))));
+    if (predicates.back() == nullptr) {
+      return nullptr;
+    }
+  }
+  if (predicates.size() == 1) {
+    predicate = predicates[0].release();
+  } else {
+    std::vector<QueryExpression *> args;
+    for (auto& e : predicates) {
+      args.push_back(e.release());
+    }
+    predicate = new AndOperator(args);
+  }
+
+  return predicate;
+}
+
 OrderBy *QueryTransformer::ConvertSortGroupClause(
   SortGroupClause *sort_clause,
   List *targetList)
@@ -352,7 +384,7 @@ QueryJoinNode *QueryTransformer::ConvertJoinExpr(JoinExpr *expr) {
   right_tables = GetJoinNodeTables(right_child);
 
   // Get join predicate
-  QueryExpression *predicate = ConvertPostgresExpression(expr->quals);
+  QueryExpression *predicate = ConvertPostgresQuals(expr->quals);
   if (predicate == nullptr) {
     LOG_DEBUG("Convert failure: JoinExpr predicate == nullptr");
     return nullptr;
@@ -409,29 +441,7 @@ QueryTransformer::ConvertFromExpr(FromExpr *from) {
 
   QueryExpression *where_predicate = nullptr;
   if (from->quals) {
-    if (from->quals->type != T_List) {
-      return {nullptr, nullptr};
-    }
-
-    std::vector<std::unique_ptr<QueryExpression>> predicates;
-    ListCell *cell;
-    const List *qual_list = reinterpret_cast<List *>(from->quals);
-    foreach(cell, qual_list) {
-      predicates.emplace_back(
-        ConvertPostgresExpression(reinterpret_cast<Node *>(lfirst(cell))));
-      if (predicates.back() == nullptr) {
-        return {nullptr, nullptr};
-      }
-    }
-    if (predicates.size() == 1) {
-      where_predicate = predicates[0].release();
-    } else {
-      std::vector<QueryExpression *> args;
-      for (auto& e : predicates) {
-        args.push_back(e.release());
-      }
-      where_predicate = new AndOperator(args);
-    }
+    where_predicate = ConvertPostgresQuals(from->quals);
   }
 
   return {join_node, where_predicate};

@@ -28,12 +28,16 @@ std::string OperatorPrinter::print() {
 }
 
 void OperatorPrinter::visit(const Variable *op) {
-  append("Variable");
-  (void)op;
+  append("Variable: ");
+  append("tuple_index " + std::to_string(op->tuple_index));
+  append(", column_index " + std::to_string(op->column_index));
+  append(", base_table_oid " + std::to_string(op->base_table_oid));
+  append(", base_table_column_index " +
+         std::to_string(op->base_table_column_index));
 }
 
 void OperatorPrinter::visit(const Constant *op) {
-  append("Constant");
+  append("Constant: " + op->value.GetInfo());
   (void)op;
 }
 
@@ -86,12 +90,15 @@ void OperatorPrinter::visit(const Join *op) {
   push_header("Join: type " + PelotonJoinTypeToString(op->join_type));
   push_header("Left child");
   op->left_node->accept(this);
+  append_line();
   pop(); // Left child
   push_header("Right child");
   op->right_node->accept(this);
+  append_line();
   pop(); // Right child
   push_header("Predicate");
   op->predicate->accept(this);
+  append_line();
   pop(); // Join
 }
 

@@ -55,6 +55,8 @@ class QueryTransformer {
 
   QueryExpression *ConvertPostgresExpression(Node *expr);
 
+  QueryExpression *ConvertPostgresQuals(Node *quals);
+
   OrderBy *ConvertSortGroupClause(SortGroupClause *sort_clause,
                                   List *targetList);
 
