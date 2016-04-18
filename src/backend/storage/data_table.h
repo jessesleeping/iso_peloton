@@ -207,7 +207,15 @@ class DataTable : public AbstractTable {
 
   inline std::shared_ptr<storage::TileGroup> GetSampleTileGroup() const;
 
-  void ComputeCardinality(oid_t sample_column_id);
+  // The column ID is sample column
+  void ComputeSampleCardinality(oid_t sample_column_id);
+
+  // column ID is table column
+  void ComputeTableCardinality(oid_t table_column_id);
+
+  size_t GetSampleCardinality(oid_t sample_column_id);
+
+  size_t GetTableCardinality(oid_t table_column_id);
 
   //===--------------------------------------------------------------------===//
   // UTILITIES
@@ -296,7 +304,7 @@ class DataTable : public AbstractTable {
 
   // The cardinality of each sampled column
   // The index of this list is the same as sample column ID
-  std::vector<size_t> cardinality_list;
+  std::map<oid_t, size_t> cardinality_map;
 
   ///////////////////////////////////////////////////////////////////
 

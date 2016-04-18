@@ -81,14 +81,14 @@ TEST_F(DataTableTests, SamplingForOptimizerTest) {
   std::unique_ptr<storage::DataTable> data_table(
       ExecutorTestsUtil::CreateTable(tuple_count, false));
   ExecutorTestsUtil::PopulateTable(txn, data_table.get(), tuple_count, false,
-                                   false, true);
+                                   true, true);
   txn_manager.CommitTransaction();
 
   size_t sample_size = data_table->SampleRows(100);
 
   LOG_INFO("Retake sample to see whether old ones are dropped correctly...");
 
-  sample_size = data_table->SampleRows(10);
+  sample_size = data_table->SampleRows(100);
 
 
   LOG_INFO("Sample size = %lu; actual size = %lu",
@@ -102,6 +102,43 @@ TEST_F(DataTableTests, SamplingForOptimizerTest) {
   data_table->MaterializeSample();
 
   LOG_INFO("Finished materialization of samples!");
+
+  data_table->ComputeTableCardinality(0);
+  data_table->ComputeTableCardinality(1);
+  data_table->ComputeTableCardinality(2);
+  // This should print an error under debug mode
+  data_table->ComputeTableCardinality(3);
+
+  LOG_INFO("Finished computing cardinality for columns");
+
+  size_t c0 = data_table->GetTableCardinality(0);
+  size_t c1 = data_table->GetTableCardinality(1);
+  size_t c2 = data_table->GetTableCardinality(2);
+  size_t c3 = data_table->GetTableCardinality(3);
+
+  LOG_INFO("Cardinality: %lu, %lu, %lu, %lu", c0, c1, c2, c3);
+  LOG_INFO("Take entire table as sample to check accuracy");
+
+  // Take whole table as sample to see accuracy
+  sample_size = data_table->SampleRows(1000);
+
+  // Do not forget this; otherwise seg fault
+  data_table->MaterializeSample();
+
+  data_table->ComputeTableCardinality(0);
+  data_table->ComputeTableCardinality(1);
+  data_table->ComputeTableCardinality(2);
+  // This should print an error under debug mode
+  data_table->ComputeTableCardinality(3);
+
+  LOG_INFO("Finished computing cardinality for columns");
+
+  c0 = data_table->GetTableCardinality(0);
+  c1 = data_table->GetTableCardinality(1);
+  c2 = data_table->GetTableCardinality(2);
+  c3 = data_table->GetTableCardinality(3);
+
+  LOG_INFO("Cardinality: %lu, %lu, %lu, %lu", c0, c1, c2, c3);
 
   return;
 }

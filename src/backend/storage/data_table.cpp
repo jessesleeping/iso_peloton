@@ -78,6 +78,8 @@ DataTable::DataTable(catalog::Schema *schema, const std::string &table_name,
       inline_column_map[col_itr] = sample_inline_column_it++;
       sample_column_mask.push_back(true);
     } else {
+      LOG_INFO("Column is varchar or varbinary. Do not map into sample");
+
       // false means the column is not mapped into sample column
       sample_column_mask.push_back(false);
     }
@@ -1050,6 +1052,21 @@ size_t DataTable::SampleRows(size_t sample_size) {
     samples_for_optimizer.clear();
   }
 
+  // If there is an existing materialized sample tile group
+  // drop it first to avoid data inconsistency
+  if(sampled_tile_group_id != INVALID_OID) {
+    LOG_INFO("Dropping an old sampled tile group... Prepare a new one.");
+
+    catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group_id);
+  }
+
+  // If there is old information in cardinality map also clear them
+  if(cardinality_map.size() != 0) {
+    LOG_INFO("Clearing existing cardinality map..\n");
+
+    cardinality_map.clear();
+  }
+
   // We want to make it ordered, and also want to detect for duplicates
   // so use a RB-Tree based ordered set
   std::set<oid_t> row_id_set{};
@@ -1081,12 +1098,17 @@ size_t DataTable::SampleRows(size_t sample_size) {
     int iter_count = 0;
 
     // outer loop detect whether there are duplicates
-    while(row_id_set.size() < sample_size && \
-          iter_count < 10) {
+    while((row_id_set.size() < sample_size) && \
+          (iter_count < 10)) {
       // Inner loop generates random numbers and insert into
       // the ordered set
       for(size_t i = 0;i < sample_size;i++) {
         row_id_set.insert(distribution(generator));
+
+        // If we have taken enough number of samples
+        if(row_id_set.size() >= sample_size) {
+          break;
+        }
       }
 
       // Avoid looping for too many times
@@ -1207,6 +1229,9 @@ void DataTable::FillSampleTileGroup() {
     return;
   }
 
+  // Make sure we have already materialized it
+  assert(sampled_tile_group_id != INVALID_OID);
+
   // Get tile group for sampling table outside of
   // the loop
   auto sample_tile_group_p = GetSampleTileGroup();
@@ -1291,7 +1316,7 @@ void DataTable::MaterializeSample() {
     return;
   }
 
-  // If we have not materialized the sampling then create one first
+  // If there is an existing tile group, drop it to avoid memory leak
   if(sampled_tile_group_id != INVALID_OID) {
     LOG_INFO("Dropping an old sampled tile group... Prepare a new one.");
 
@@ -1315,13 +1340,115 @@ void DataTable::MaterializeSample() {
 }
 
 /*
- * ComputeCardinality() - Given a sample column ID, compute the cardinality
+ * ComputeTableCardinality() - Compute cardinality given a table
+ *                             column ID
+ *
+ * This is a wrapper to ComputeSampleCardinality()
+ */
+void DataTable::ComputeTableCardinality(oid_t table_column_id) {
+  auto it = inline_column_map.find(table_column_id);
+  if(it == inline_column_map.end()) {
+    LOG_ERROR("Table column %lu not sampled (varchar or binary?)",
+              table_column_id);
+
+    return;
+  }
+
+  // If the column sample exists just call wrapper with sample
+  // column name
+  ComputeSampleCardinality(it->second);
+
+  return;
+}
+
+/*
+ * ComputeSampleCardinality() - Given a sample column ID, compute the
+ *                              cardinality
  *
  * Cardinality is computed using a hash table to aggregate inlined values
+ *
+ * NOTE: This function takes the argument as sample cardinality
  */
-void DataTable::ComputeCardinality(oid_t sample_column_id) {
-  (void)sample_column_id;
+void DataTable::ComputeSampleCardinality(oid_t sample_column_id) {
+  struct ValueEqualityFunc {
+    size_t operator()(const Value &v) {
+      return (size_t)v.MurmurHash3();
+    }
+  };
+
+  std::unordered_set<Value,
+                     ValueEqualityFunc> \
+    aggregate_set{};
+
+  auto sample_tile_group_p = GetSampleTileGroup();
+  assert(sample_tile_group_p.get() != nullptr);
+
+  oid_t tile_id = INVALID_OID;
+  oid_t tile_column_id = INVALID_OID;
+
+  // Last two arguments will be modified as return value
+  // (this interface sucks - passing return value through output
+  // parameters should be given a strong hint by using pointers)
+  sample_tile_group_p->LocateTileAndColumn(sample_column_id,
+                                           tile_id,
+                                           tile_column_id);
+
+  // Since sample tile group is totally column oriented
+  // column offset inside a tile is always 0
+  assert(tile_column_id == 0);
+  // We always get tuple from this tile
+  Tile *tile_p = sample_tile_group_p->GetTile(tile_id);
+
+  size_t sample_row_count = GetOptimizerSampleSize();
+  for(oid_t i = 0;i < (oid_t)sample_row_count;i++) {
+    Value v = tile_p->GetValue(i, tile_column_id);
+
+    aggregate_set.insert(v);
+  }
+
+  cardinality_map[sample_column_id] = aggregate_set.size();
+
+  return;
 }
+
+
+/*
+ * GetSmapleCardinality() - Return the cardinality of sample table
+ *
+ * NOTE: If the cardinality has not been taken, or the column does not
+ * exist, this function always return 0 (which is considered as invalid)
+ * to avoid crashing the system but the caller should take care
+ */
+size_t DataTable::GetSampleCardinality(oid_t sample_column_id) {
+  if(cardinality_map.find(sample_column_id) == \
+     cardinality_map.end()) {
+    LOG_INFO("Sample column not found. Return 0 instead");
+
+    return 0LU;
+  }
+
+  return cardinality_map[sample_column_id];
+}
+
+/*
+ * GetTableCardinality() - Return cardinality of data table
+ *
+ * NOTE: This function returns 0 if the column has not been sampled
+ * either because it is varchar/binary or because a wrong column ID
+ * that does not exist in the table is provided.
+ * Caller should check the return value to make sure the cardinality
+ * returned is a valid number
+ */
+size_t DataTable::GetTableCardinality(oid_t table_column_id) {
+  auto sample_column_it = inline_column_map.find(table_column_id);
+
+  if(sample_column_it == inline_column_map.end()) {
+    return 0;
+  }
+
+  return GetSampleCardinality(sample_column_it->second);
+}
+
 
 }  // End storage namespace
 }  // End peloton namespace
