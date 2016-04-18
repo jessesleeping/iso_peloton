@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// operator_printer.h
+// query_node_printer.h
 //
-// Identification: src/backend/optimizer/operator_printer.h
+// Identification: src/backend/optimizer/query_node_printer.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -12,26 +12,25 @@
 
 #pragma once
 
-#include "backend/optimizer/operator_visitor.h"
-#include "backend/optimizer/operator_node.h"
-
+#include "backend/optimizer/query_node_visitor.h"
 #include <string>
 
 namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
-// Operator Visitor
+// Query Node Printer
 //===--------------------------------------------------------------------===//
 
-class OperatorPrinter : OperatorVisitor {
+class QueryNodePrinter : QueryNodeVisitor {
  public:
-  OperatorPrinter(Select *op);
+  QueryNodePrinter(Select *op);
 
   std::string print();
 
   virtual void visit(const Variable*);
   virtual void visit(const Constant*);
+  virtual void visit(const OperatorExpression*);
   virtual void visit(const AndOperator*);
   virtual void visit(const OrOperator*);
   virtual void visit(const NotOperator*);
@@ -61,7 +60,7 @@ class OperatorPrinter : OperatorVisitor {
   bool new_line_;
 };
 
-std::string PrintOperator(Select *op);
+std::string PrintQuery(Select *op);
 
 } /* namespace optimizer */
 } /* namespace peloton */

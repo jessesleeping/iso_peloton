@@ -12,19 +12,10 @@
 
 #pragma once
 
+#include "backend/optimizer/logical_operators.h"
+
 namespace peloton {
 namespace optimizer {
-
-class Variable;
-class Constant;
-class AndOperator;
-class OrOperator;
-class NotOperator;
-class Attribute;
-class Table;
-class Join;
-class OrderBy;
-class Select;
 
 //===--------------------------------------------------------------------===//
 // Operator Visitor
@@ -34,16 +25,15 @@ class OperatorVisitor {
  public:
   virtual ~OperatorVisitor() {};
 
-  virtual void visit(const Variable*) = 0;
-  virtual void visit(const Constant*) = 0;
-  virtual void visit(const AndOperator*) = 0;
-  virtual void visit(const OrOperator*) = 0;
-  virtual void visit(const NotOperator*) = 0;
-  virtual void visit(const Attribute*) = 0;
-  virtual void visit(const Table*) = 0;
-  virtual void visit(const Join*) = 0;
-  virtual void visit(const OrderBy*) = 0;
-  virtual void visit(const Select*) = 0;
+  virtual void visit(const LogicalGet*);
+  virtual void visit(const LogicalProject*);
+  virtual void visit(const LogicalFilter*);
+  virtual void visit(const LogicalInnerJoin*);
+  virtual void visit(const LogicalLeftJoin*);
+  virtual void visit(const LogicalRightJoin*);
+  virtual void visit(const LogicalOuterJoin*);
+  virtual void visit(const LogicalAggregate*);
+  virtual void visit(const LogicalLimit*);
 };
 
 } /* namespace optimizer */

@@ -39,17 +39,23 @@ class QueryTransformer {
   Select *Transform(Query *pg_query);
 
  private:
+  oid_t FindTupleIndex(oid_t base_table_oid);
+
+  std::vector<Table *> GetJoinNodeTables(QueryJoinNode *expr);
+
   PelotonJoinType TransformJoinType(const JoinType type);
 
-  QueryExpression *ConvertVar(Var *expr);
+  Variable *ConvertVar(Var *expr);
 
-  QueryExpression *ConvertConst(Const *expr);
+  Constant *ConvertConst(Const *expr);
 
   QueryExpression *ConvertBoolExpr(BoolExpr *expr);
 
-  QueryExpression *ConvertOpExpr(OpExpr *expr);
+  OperatorExpression *ConvertOpExpr(OpExpr *expr);
 
   QueryExpression *ConvertPostgresExpression(Node *expr);
+
+  QueryExpression *ConvertPostgresQuals(Node *quals);
 
   OrderBy *ConvertSortGroupClause(SortGroupClause *sort_clause,
                                   List *targetList);
@@ -72,11 +78,17 @@ class QueryTransformer {
   // Member variables for tracking partial query state
   //===--------------------------------------------------------------------===//
 
+  oid_t database_oid;
+
+  // List of the attributes needed for output
+  std::vector<std::unique_ptr<Attribute>> output_list;
+
   // List of all range table entries in original query rtable
   std::vector<RangeTblEntry*> rte_entries;
 
   // Current expression trees inner and outer tables
-
+  std::vector<Table*> left_tables;
+  std::vector<Table*> right_tables;
 };
 
 } /* namespace optimizer */
