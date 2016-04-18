@@ -73,7 +73,7 @@ TEST_F(DataTableTests, TransformTileGroupTest) {
  * SamplingForOptimizerTest - Tests basic table basic sampling
  */
 TEST_F(DataTableTests, SamplingForOptimizerTest) {
-  const int tuple_count = TESTS_TUPLES_PER_TILEGROUP;
+  const int tuple_count = 1000;
 
   // Create a table and wrap it in logical tiles
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
@@ -84,7 +84,7 @@ TEST_F(DataTableTests, SamplingForOptimizerTest) {
                                    false, true);
   txn_manager.CommitTransaction();
 
-  size_t sample_size = data_table->SampleRows(10);
+  size_t sample_size = data_table->SampleRows(100);
 
   LOG_INFO("Retake sample to see whether old ones are dropped correctly...");
 

@@ -1314,5 +1314,14 @@ void DataTable::MaterializeSample() {
   return;
 }
 
+/*
+ * ComputeCardinality() - Given a sample column ID, compute the cardinality
+ *
+ * Cardinality is computed using a hash table to aggregate inlined values
+ */
+void DataTable::ComputeCardinality(oid_t sample_column_id) {
+  (void)sample_column_id;
+}
+
 }  // End storage namespace
 }  // End peloton namespace
