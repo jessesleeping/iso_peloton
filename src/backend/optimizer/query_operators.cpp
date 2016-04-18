@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "backend/optimizer/query_operators.h"
-#include "backend/optimizer/operator_visitor.h"
+#include "backend/optimizer/query_node_visitor.h"
 
 namespace peloton {
 namespace optimizer {
@@ -42,7 +42,7 @@ ExpressionType Variable::GetExpressionType() const {
   return EXPRESSION_TYPE_COLUMN_REF;
 }
 
-void Variable::accept(OperatorVisitor *v) const {
+void Variable::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -57,7 +57,7 @@ ExpressionType Constant::GetExpressionType() const {
   return EXPRESSION_TYPE_VALUE_CONSTANT;
 }
 
-void Constant::accept(OperatorVisitor *v) const {
+void Constant::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -74,7 +74,7 @@ ExpressionType OperatorExpression::GetExpressionType() const {
   return type;
 }
 
-void OperatorExpression::accept(OperatorVisitor *v) const {
+void OperatorExpression::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -90,7 +90,7 @@ ExpressionType AndOperator::GetExpressionType() const {
   return EXPRESSION_TYPE_CONJUNCTION_AND;
 }
 
-void AndOperator::accept(OperatorVisitor *v) const {
+void AndOperator::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -103,7 +103,7 @@ ExpressionType OrOperator::GetExpressionType() const {
   return EXPRESSION_TYPE_CONJUNCTION_OR;
 }
 
-void OrOperator::accept(OperatorVisitor *v) const {
+void OrOperator::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -116,7 +116,7 @@ ExpressionType NotOperator::GetExpressionType() const {
   return EXPRESSION_TYPE_OPERATOR_NOT;
 }
 
-void NotOperator::accept(OperatorVisitor *v) const {
+void NotOperator::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -133,7 +133,7 @@ ExpressionType Attribute::GetExpressionType() const {
   return EXPRESSION_TYPE_COLUMN_REF;
 }
 
-void Attribute::accept(OperatorVisitor *v) const {
+void Attribute::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -158,7 +158,7 @@ QueryJoinNodeType Table::GetPlanNodeType() const {
   return QueryJoinNodeType::TABLE;
 }
 
-void Table::accept(OperatorVisitor *v) const {
+void Table::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -183,7 +183,7 @@ QueryJoinNodeType Join::GetPlanNodeType() const {
   return QueryJoinNodeType::JOIN;
 }
 
-void Join::accept(OperatorVisitor *v) const {
+void Join::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -205,7 +205,7 @@ OrderBy::OrderBy(
     reverse(reverse)
 {}
 
-void OrderBy::accept(OperatorVisitor *v) const {
+void OrderBy::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 
@@ -223,7 +223,7 @@ Select::Select(
     orderings(orderings)
 {}
 
-void Select::accept(OperatorVisitor *v) const {
+void Select::accept(QueryNodeVisitor *v) const {
   v->visit(this);
 }
 

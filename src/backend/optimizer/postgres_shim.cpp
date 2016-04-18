@@ -17,7 +17,7 @@
 #include "backend/optimizer/postgres_shim.h"
 #include "backend/optimizer/query_transformer.h"
 #include "backend/optimizer/query_operators.h"
-#include "backend/optimizer/operator_printer.h"
+#include "backend/optimizer/query_node_printer.h"
 
 #include "access/attnum.h"
 #include "miscadmin.h"
@@ -93,7 +93,7 @@ std::shared_ptr<planner::AbstractPlan> PelotonOptimize(
   std::shared_ptr<planner::AbstractPlan> plan;
   if (query_tree) {
     LOG_DEBUG("Succesfully converted postgres query to Peloton query");
-    LOG_DEBUG("Peloton query:\n %s", PrintOperator(query_tree.get()).c_str());
+    LOG_DEBUG("Peloton query:\n %s", PrintQuery(query_tree.get()).c_str());
     LOG_DEBUG("Invoking peloton optimizer...");
     plan = optimizer.GeneratePlan(query_tree);
     if (plan) {

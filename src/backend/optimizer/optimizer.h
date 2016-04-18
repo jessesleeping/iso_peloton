@@ -13,6 +13,10 @@
 #pragma once
 
 #include "backend/optimizer/query_operators.h"
+#include "backend/optimizer/operator_node.h"
+#include "backend/optimizer/pattern.h"
+#include "backend/optimizer/property.h"
+#include "backend/optimizer/rule.h"
 #include "backend/planner/abstract_plan.h"
 #include "backend/common/logger.h"
 
@@ -37,6 +41,46 @@ class Optimizer {
 
   std::shared_ptr<planner::AbstractPlan> GeneratePlan(
     std::shared_ptr<Select> select_tree);
+
+ private:
+  /* TransformQueryTree - create an initial operator tree for the given query
+   * to be used in performing optimization.
+   *
+   * tree: a peloton query tree representing a select query
+   * return: a logically equivalent operator tree that represents the query
+   */
+  Operator TransformQueryTree(std::shared_ptr<Select> tree);
+
+  /* Optimize - produce the best plan for the given operator tree which has the
+   * specified physical requirements
+   *
+   * root: an operator tree representing a query
+   * requirements: the set of requirements the returned plan's output
+   *               must have
+   * return: the best physical plan which represents the given operator tree
+   */
+  std::shared_ptr<planner::AbstractPlan> Optimize(
+    Operator root,
+    std::vector<Property> requirements);
+
+  /* Explore - check the operator tree root for the given pattern
+   *
+   * root: an operator tree representing a query
+   * pattern: an operator tree representing a query
+   * return: the best physical plan which represents the given operator tree
+   */
+  bool Explore(Operator root, Pattern pattern);
+
+  /* TransformOperator - apply the given rule to the operator tree root to
+   * generate a logically equivalent operator tree or a physical implementation
+   * of the operator depending on the type of rule
+   *
+   * root: an operator tree
+   * rule: the rule to transform the given operator tree
+   * return: a new operator tree after rule application
+   */
+  Operator TransformOperator(Operator root, Rule rule);
+
 };
 
 } /* namespace optimizer */

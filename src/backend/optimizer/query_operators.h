@@ -26,6 +26,8 @@
 namespace peloton {
 namespace optimizer {
 
+class QueryNodeVisitor;
+
 enum class QueryJoinNodeType {
   TABLE,
   JOIN,
@@ -56,7 +58,7 @@ struct QueryExpression {
 
   virtual ExpressionType GetExpressionType() const = 0;
 
-  virtual void accept(OperatorVisitor *v) const = 0;
+  virtual void accept(QueryNodeVisitor *v) const = 0;
 
  private:
   QueryExpression *parent_ = nullptr;
@@ -71,7 +73,7 @@ struct Variable : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   oid_t tuple_index;
   oid_t column_index;
@@ -88,7 +90,7 @@ struct Constant : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   Value value;
 };
@@ -102,7 +104,7 @@ struct OperatorExpression : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   peloton::ExpressionType type;
   std::vector<QueryExpression *> args;
@@ -116,7 +118,7 @@ struct AndOperator : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   std::vector<QueryExpression *> args;
 };
@@ -126,7 +128,7 @@ struct OrOperator : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   std::vector<QueryExpression *> args;
 };
@@ -136,7 +138,7 @@ struct NotOperator : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   QueryExpression *arg;
 };
@@ -150,7 +152,7 @@ struct Attribute : QueryExpression {
 
   virtual ExpressionType GetExpressionType() const override;
 
-  void accept(OperatorVisitor *v) const override;
+  void accept(QueryNodeVisitor *v) const override;
 
   int table_index;
   int column_index;
@@ -181,7 +183,7 @@ struct QueryJoinNode {
 
   virtual QueryJoinNodeType GetPlanNodeType() const = 0;
 
-  virtual void accept(OperatorVisitor *v) const = 0;
+  virtual void accept(QueryNodeVisitor *v) const = 0;
 
  private:
   QueryJoinNode *parent_ = nullptr;
@@ -195,7 +197,7 @@ struct Table : QueryJoinNode {
 
   virtual QueryJoinNodeType GetPlanNodeType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   oid_t table_oid;
   storage::DataTable *data_table;
@@ -214,7 +216,7 @@ struct Join : QueryJoinNode {
 
   virtual QueryJoinNodeType GetPlanNodeType() const override;
 
-  virtual void accept(OperatorVisitor *v) const override;
+  virtual void accept(QueryNodeVisitor *v) const override;
 
   PelotonJoinType join_type;
 
@@ -260,7 +262,7 @@ struct OrderBy {
     bool nulls_first,
     bool reverse);
 
-  void accept(OperatorVisitor *v) const;
+  void accept(QueryNodeVisitor *v) const;
 
   int output_list_index;
   bridge::PltFuncMetaInfo equality_fn;
@@ -280,7 +282,7 @@ struct Select {
          const std::vector<Attribute *>& output_list,
          const std::vector<OrderBy *>& orderings);
 
-  void accept(OperatorVisitor *v) const;
+  void accept(QueryNodeVisitor *v) const;
 
   QueryJoinNode *join_tree;
   QueryExpression *where_predicate;

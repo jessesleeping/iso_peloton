@@ -17,7 +17,7 @@
 #include "backend/optimizer/postgres_shim.h"
 #include "backend/optimizer/query_transformer.h"
 #include "backend/optimizer/query_operators.h"
-#include "backend/optimizer/operator_printer.h"
+#include "backend/optimizer/query_node_printer.h"
 #include "backend/catalog/manager.h"
 #include "backend/common/value_factory.h"
 #include "backend/bridge/dml/tuple/tuple_transformer.h"

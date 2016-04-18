@@ -2,32 +2,32 @@
 //
 //                         Peloton
 //
-// operator_printer.cpp
+// query_node_printer.cpp
 //
-// Identification: src/backend/optimizer/operator_printer.cpp
+// Identification: src/backend/optimizer/query_node_printer.cpp
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#include "backend/optimizer/operator_printer.h"
+#include "backend/optimizer/query_node_printer.h"
 #include "backend/optimizer/query_operators.h"
 #include "backend/common/types.h"
 
 namespace peloton {
 namespace optimizer {
 
-OperatorPrinter::OperatorPrinter(Select *op)
+QueryNodePrinter::QueryNodePrinter(Select *op)
   : op_(op), depth_(0), new_line_(false) {}
 
-std::string OperatorPrinter::print() {
+std::string QueryNodePrinter::print() {
   if (printed_op_.empty()) {
     op_->accept(this);
   }
   return printed_op_;
 }
 
-void OperatorPrinter::visit(const Variable *op) {
+void QueryNodePrinter::visit(const Variable *op) {
   append("Variable: ");
   append("tuple_index " + std::to_string(op->tuple_index));
   append(", column_index " + std::to_string(op->column_index));
@@ -36,12 +36,12 @@ void OperatorPrinter::visit(const Variable *op) {
          std::to_string(op->base_table_column_index));
 }
 
-void OperatorPrinter::visit(const Constant *op) {
+void QueryNodePrinter::visit(const Constant *op) {
   append("Constant: " + op->value.GetInfo());
   (void)op;
 }
 
-void OperatorPrinter::visit(const OperatorExpression* op) {
+void QueryNodePrinter::visit(const OperatorExpression* op) {
   push_header("OperatorExpression, type: " +
               ExpressionTypeToString(op->type));
   for (QueryExpression *e : op->args) {
@@ -51,7 +51,7 @@ void OperatorPrinter::visit(const OperatorExpression* op) {
   pop(); // OperatorExpression
 }
 
-void OperatorPrinter::visit(const AndOperator *op) {
+void QueryNodePrinter::visit(const AndOperator *op) {
   push_header("And");
   for (QueryExpression *e : op->args) {
     e->accept(this);
@@ -60,7 +60,7 @@ void OperatorPrinter::visit(const AndOperator *op) {
   pop(); // And
 }
 
-void OperatorPrinter::visit(const OrOperator *op) {
+void QueryNodePrinter::visit(const OrOperator *op) {
   push_header("Or");
   for (QueryExpression *e : op->args) {
     e->accept(this);
@@ -69,24 +69,24 @@ void OperatorPrinter::visit(const OrOperator *op) {
   pop(); // Or
 }
 
-void OperatorPrinter::visit(const NotOperator *op) {
+void QueryNodePrinter::visit(const NotOperator *op) {
   push_header("Not");
   op->arg->accept(this);
   pop();
 }
 
-void OperatorPrinter::visit(const Attribute *op) {
+void QueryNodePrinter::visit(const Attribute *op) {
   append("Attribute: ");
   append("table_index " + std::to_string(op->table_index));
   append(", ");
   append("column_index " + std::to_string(op->column_index));
 }
 
-void OperatorPrinter::visit(const Table *op) {
+void QueryNodePrinter::visit(const Table *op) {
   append("Table: oid " + std::to_string(op->table_oid));
 }
 
-void OperatorPrinter::visit(const Join *op) {
+void QueryNodePrinter::visit(const Join *op) {
   push_header("Join: type " + PelotonJoinTypeToString(op->join_type));
   push_header("Left child");
   op->left_node->accept(this);
@@ -102,7 +102,7 @@ void OperatorPrinter::visit(const Join *op) {
   pop(); // Join
 }
 
-void OperatorPrinter::visit(const OrderBy *op) {
+void QueryNodePrinter::visit(const OrderBy *op) {
   append("OrderBy: ");
   append("output_column_index " + std::to_string(op->output_list_index));
   append(", ");
@@ -118,7 +118,7 @@ void OperatorPrinter::visit(const OrderBy *op) {
 
 }
 
-void OperatorPrinter::visit(const Select *op) {
+void QueryNodePrinter::visit(const Select *op) {
   push_header("Select");
 
   push_header("Join Tree");
@@ -154,7 +154,7 @@ void OperatorPrinter::visit(const Select *op) {
   pop(); // Select
 }
 
-void OperatorPrinter::append(const std::string &string) {
+void QueryNodePrinter::append(const std::string &string) {
   if (new_line_) {
     for (int i = 0; i < depth_; ++i) {
       printed_op_ += "  ";
@@ -164,33 +164,33 @@ void OperatorPrinter::append(const std::string &string) {
   printed_op_ += string;
 }
 
-void OperatorPrinter::append_line(const std::string &string) {
+void QueryNodePrinter::append_line(const std::string &string) {
   if (!new_line_ || string != "") {
     append(string + "\n");
     new_line_ = true;
   }
 }
 
-void OperatorPrinter::append_line() {
+void QueryNodePrinter::append_line() {
   append_line("");
 }
 
-void OperatorPrinter::push() {
+void QueryNodePrinter::push() {
   depth_++;
 }
 
-void OperatorPrinter::push_header(const std::string &string) {
+void QueryNodePrinter::push_header(const std::string &string) {
   append_line(string);
   push();
 }
 
-void OperatorPrinter::pop() {
+void QueryNodePrinter::pop() {
   depth_--;
   assert(depth_ >= 0);
 }
 
-std::string PrintOperator(Select *op) {
-  OperatorPrinter printer(op);
+std::string PrintQuery(Select *op) {
+  QueryNodePrinter printer(op);
   return printer.print();
 }
 

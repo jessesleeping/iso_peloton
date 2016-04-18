@@ -10,7 +10,9 @@ optimizer_FILES = \
 				backend/optimizer/optimizer.cpp \
 				backend/optimizer/operator_node.cpp \
 				backend/optimizer/query_operators.cpp \
-				backend/optimizer/operator_printer.cpp
+				backend/optimizer/query_node_printer.cpp \
+				backend/optimizer/logical_operators.cpp \
+				backend/optimizer/operator_visitor.cpp
 
 optimizer_INCLUDES = \
 				   -I$(srcdir)/backend/optimizer
