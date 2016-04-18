@@ -1041,10 +1041,10 @@ std::shared_ptr<storage::TileGroup> DataTable::GetSampleTileGroup() const {
  * numbers. We return the actual number of samples taken
  */
 size_t DataTable::SampleRows(size_t sample_size) {
-  LOG_TRACE("Start a new sampling, size = %lu ", sample_size);
+  LOG_INFO("Start a new sampling, size = %lu ", sample_size);
 
   if(samples_for_optimizer.size() != 0) {
-    LOG_TRACE("Previous sample size not 0. Clear! ");
+    LOG_INFO("Previous sample size not 0. Clear! ");
 
     // Clear previous sample results, if there is one
     samples_for_optimizer.clear();
@@ -1060,7 +1060,7 @@ size_t DataTable::SampleRows(size_t sample_size) {
   size_t total_tuple_number = tuple_count_exact;
 
   if(sample_size >= total_tuple_number) {
-    LOG_TRACE("Sample size too large! Adjust to fit actual table size %lu... ",
+    LOG_INFO("Sample size too large! Adjust to fit actual table size %lu... ",
               total_tuple_number);
 
     sample_size = total_tuple_number;
@@ -1125,7 +1125,7 @@ size_t DataTable::SampleRows(size_t sample_size) {
  */
 void DataTable::BuildSampleSchema() {
   if(sample_column_map.size() != 0) {
-    LOG_TRACE("Sample column map size not zero. Clear it first");
+    LOG_INFO("Sample column map size not zero. Clear it first");
 
     sample_column_map.clear();
   }
@@ -1163,7 +1163,7 @@ void DataTable::BuildSampleSchema() {
  */
 TileGroup *DataTable::BuildSampleTileGroup() {
   if(GetOptimizerSampleSize() == 0LU) {
-    LOG_TRACE("Sample size is zero. Please take samples first");
+    LOG_INFO("Sample size is zero. Please take samples first");
 
     return nullptr;
   }
@@ -1202,7 +1202,7 @@ TileGroup *DataTable::BuildSampleTileGroup() {
  */
 void DataTable::FillSampleTileGroup() {
   if(GetOptimizerSampleSize() == 0LU) {
-    LOG_TRACE("Sample has not been taken");
+    LOG_INFO("Sample has not been taken");
 
     return;
   }
@@ -1286,14 +1286,14 @@ void DataTable::FillSampleTileGroup() {
 void DataTable::MaterializeSample() {
   // First check whether samples have already been taken or not
   if(GetOptimizerSampleSize() == 0LU) {
-    LOG_TRACE("Sample not taken yet. Please take sample first");
+    LOG_INFO("Sample not taken yet. Please take sample first");
 
     return;
   }
 
   // If we have not materialized the sampling then create one first
   if(sampled_tile_group_id != INVALID_OID) {
-    LOG_TRACE("Dropping an old sampled tile group... Prepare a new one.");
+    LOG_INFO("Dropping an old sampled tile group... Prepare a new one.");
 
     catalog::Manager::GetInstance().DropTileGroup(sampled_tile_group_id);
   }

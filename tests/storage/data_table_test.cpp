@@ -85,11 +85,23 @@ TEST_F(DataTableTests, SamplingForOptimizerTest) {
   txn_manager.CommitTransaction();
 
   size_t sample_size = data_table->SampleRows(10);
-  (void)sample_size;
 
-  LOG_TRACE("Sample size = %lu; actual size = %lu\n",
-            sample_size,
-            data_table->GetOptimizerSampleSize());
+  LOG_INFO("Retake sample to see whether old ones are dropped correctly...");
+
+  sample_size = data_table->SampleRows(10);
+
+
+  LOG_INFO("Sample size = %lu; actual size = %lu",
+           sample_size,
+           data_table->GetOptimizerSampleSize());
+
+  data_table->MaterializeSample();
+
+  LOG_INFO("Re-materialization to check whether old tile group is dropped");
+
+  data_table->MaterializeSample();
+
+  LOG_INFO("Finished materialization of samples!");
 
   return;
 }

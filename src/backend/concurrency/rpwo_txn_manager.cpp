@@ -186,7 +186,7 @@ bool RpwoTxnManager::PerformRead(const oid_t &tile_group_id,
   if (GET_WRITER_ID(old_txn_id) == INITIAL_TXN_ID) {
     LOG_TRACE("No one holding the lock");
     while (true) {
-      LOG_TRACE("Current read count is %lu", GET_READER_COUNT(old_txn_id));
+      LOG_TRACE("Current read count is %d", GET_READER_COUNT(old_txn_id));
       auto new_read_count = GET_READER_COUNT(old_txn_id) + 1;
       // Try add read count
       auto new_txn_id = PACK_TXN_ID(INITIAL_TXN_ID, new_read_count);
@@ -367,7 +367,7 @@ Result RpwoTxnManager::CommitTransaction() {
   Result ret = current_txn->GetResult();
 
   EndTransaction();
-  
+
   rpwo_released_rdlock.clear();
   return ret;
 }
