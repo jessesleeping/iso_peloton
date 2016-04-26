@@ -54,14 +54,22 @@ class Optimizer {
   /* Optimize - produce the best plan for the given operator tree which has the
    * specified physical requirements
    *
-   * root: an operator tree representing a query
-   * requirements: the set of requirements the returned plan's output
+   * root: a group to optimize
+   * requirements: the set of requirements the returned operato tree
    *               must have
-   * return: the best physical plan which represents the given operator tree
+   * return: the best physical operator tree for the given group
    */
-  std::shared_ptr<planner::AbstractPlan> Optimize(
-    Operator root,
-    std::vector<Property> requirements);
+  Operator OptimizeGroup(GroupID id,
+                         const Group &group,
+                         std::vector<Property> requirements);
+
+  /*
+   *
+   */
+  Operator OptimizeItem(GroupID id,
+                        size_t item_index,
+                        Operator item,
+                        std::vector<Property> requirements);
 
   /* Explore - check the operator tree root for the given pattern
    *
@@ -69,7 +77,18 @@ class Optimizer {
    * pattern: an operator tree representing a query
    * return: the best physical plan which represents the given operator tree
    */
-  bool Explore(Operator root, Pattern pattern);
+  void ExploreGroup(GroupID id, const Group &group, const Rule &rule);
+
+  /* Explore - check the operator tree root for the given pattern
+   *
+   * root: an operator tree representing a query
+   * pattern: an operator tree representing a query
+   * return: the best physical plan which represents the given operator tree
+   */
+  void ExploreItem(GroupID id,
+                   size_t item_index,
+                   Operator item,
+                   const Rule &rule);
 
   /* TransformOperator - apply the given rule to the operator tree root to
    * generate a logically equivalent operator tree or a physical implementation
@@ -79,8 +98,11 @@ class Optimizer {
    * rule: the rule to transform the given operator tree
    * return: a new operator tree after rule application
    */
-  Operator TransformOperator(Operator root, Rule rule);
+  Operator TransformOperator(Operator root, const Rule &rule);
 
+  std::vector<Group> groups;
+
+  std::vector<Rule> rules;
 };
 
 } /* namespace optimizer */

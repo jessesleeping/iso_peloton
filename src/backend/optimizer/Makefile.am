@@ -12,7 +12,10 @@ optimizer_FILES = \
 				backend/optimizer/query_operators.cpp \
 				backend/optimizer/query_node_printer.cpp \
 				backend/optimizer/logical_operators.cpp \
-				backend/optimizer/operator_visitor.cpp
+				backend/optimizer/operator_visitor.cpp \
+				backend/optimizer/group.cpp \
+				backend/optimizer/pattern.cpp \
+				backend/optimizer/binding.cpp
 
 optimizer_INCLUDES = \
 				   -I$(srcdir)/backend/optimizer

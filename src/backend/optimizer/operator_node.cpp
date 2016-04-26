@@ -16,15 +16,42 @@ namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
-// Operator Node
+// Operator
 //===--------------------------------------------------------------------===//
-
 Operator::Operator() : node(nullptr) {}
 
 Operator::Operator(BaseOperatorNode* node) : node(node) {}
 
 void Operator::accept(OperatorVisitor *v) const {
   node->accept(v);
+}
+
+std::string Operator::name() const {
+  if (defined()) {
+    return node->name();
+  }
+  return "Undefined";
+}
+
+OpType Operator::type() const {
+  if (defined()) {
+    return node->type();
+  }
+  return OpType::Undefined;
+}
+
+bool Operator::is_logical() const {
+  if (defined()) {
+    return node->is_logical();
+  }
+  return false;
+}
+
+bool Operator::is_physical() const {
+  if (defined()) {
+    return node->is_physical();
+  }
+  return false;
 }
 
 bool Operator::defined() const {

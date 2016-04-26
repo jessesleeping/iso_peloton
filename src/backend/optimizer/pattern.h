@@ -12,10 +12,27 @@
 
 #pragma once
 
+#include "backend/optimizer/operator_node.h"
+
+#include <vector>
+#include <memory>
+
 namespace peloton {
 namespace optimizer {
 
 class Pattern {
+ public:
+  Pattern(OpType op);
+
+  void add_child(std::shared_ptr<Pattern> child);
+
+  const std::vector<std::shared_ptr<Pattern>> &Children() const;
+
+  OpType type() const;
+
+ private:
+  OpType _type;
+  std::vector<std::shared_ptr<Pattern>> children;
 };
 
 } /* namespace optimizer */

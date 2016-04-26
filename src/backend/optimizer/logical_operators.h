@@ -14,6 +14,7 @@
 
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/query_operators.h"
+#include "backend/optimizer/group.h"
 
 namespace peloton {
 namespace optimizer {
@@ -21,7 +22,7 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 // Get
 //===--------------------------------------------------------------------===//
-class LogicalGet : OperatorNode<LogicalGet> {
+class LogicalGet : public OperatorNode<LogicalGet> {
  public:
   static Operator make(oid_t base_table, std::vector<oid_t> columns);
 
@@ -32,86 +33,86 @@ class LogicalGet : OperatorNode<LogicalGet> {
 //===--------------------------------------------------------------------===//
 // Project
 //===--------------------------------------------------------------------===//
-class LogicalProject : OperatorNode<LogicalProject> {
+class LogicalProject : public OperatorNode<LogicalProject> {
  public:
-  static Operator make(Operator child);
+  static Operator make(GroupID child);
 
-  Operator child;
+  GroupID child;
 };
 
 //===--------------------------------------------------------------------===//
 // Filter
 //===--------------------------------------------------------------------===//
-class LogicalFilter : OperatorNode<LogicalFilter> {
+class LogicalFilter : public OperatorNode<LogicalFilter> {
  public:
-  static Operator make(Operator child, QueryExpression *predicate);
+  static Operator make(GroupID child, QueryExpression *predicate);
 
-  Operator child;
+  GroupID child;
   QueryExpression *predicate;
 };
 
 //===--------------------------------------------------------------------===//
 // InnerJoin
 //===--------------------------------------------------------------------===//
-class LogicalInnerJoin : OperatorNode<LogicalInnerJoin> {
+class LogicalInnerJoin : public OperatorNode<LogicalInnerJoin> {
  public:
-  static Operator make(Operator outer, Operator inner);
+  static Operator make(GroupID outer, GroupID inner);
 
-  Operator outer;
-  Operator inner;
+  GroupID outer;
+  GroupID inner;
 };
 
 //===--------------------------------------------------------------------===//
 // LeftJoin
 //===--------------------------------------------------------------------===//
-class LogicalLeftJoin : OperatorNode<LogicalLeftJoin> {
+class LogicalLeftJoin : public OperatorNode<LogicalLeftJoin> {
  public:
-  static Operator make(Operator outer, Operator inner);
+  static Operator make(GroupID outer, GroupID inner);
 
-  Operator outer;
-  Operator inner;
+  GroupID outer;
+  GroupID inner;
 };
 
 //===--------------------------------------------------------------------===//
 // RightJoin
 //===--------------------------------------------------------------------===//
-class LogicalRightJoin : OperatorNode<LogicalRightJoin> {
+class LogicalRightJoin : public OperatorNode<LogicalRightJoin> {
  public:
-  static Operator make(Operator outer, Operator inner);
+  static Operator make(GroupID outer, GroupID inner);
 
-  Operator outer;
-  Operator inner;
+  GroupID outer;
+  GroupID inner;
 };
 
 //===--------------------------------------------------------------------===//
 // OuterJoin
 //===--------------------------------------------------------------------===//
-class LogicalOuterJoin : OperatorNode<LogicalOuterJoin> {
+class LogicalOuterJoin : public OperatorNode<LogicalOuterJoin> {
  public:
-  static Operator make(Operator outer, Operator inner);
+  static Operator make(GroupID outer, GroupID inner);
 
-  Operator outer;
-  Operator inner;
+  GroupID outer;
+  GroupID inner;
 };
 
 //===--------------------------------------------------------------------===//
 // Aggregate
 //===--------------------------------------------------------------------===//
-class LogicalAggregate : OperatorNode<LogicalAggregate> {
+class LogicalAggregate : public OperatorNode<LogicalAggregate> {
  public:
-  static Operator make(Operator child);
+  static Operator make(GroupID child);
 
-  Operator child;
+  GroupID child;
 };
 
 //===--------------------------------------------------------------------===//
 // Limit
 //===--------------------------------------------------------------------===//
-class LogicalLimit : OperatorNode<LogicalLimit> {
+class LogicalLimit : public OperatorNode<LogicalLimit> {
  public:
-  static Operator make(Operator child, int limit);
+  static Operator make(GroupID child, int limit);
 
-  Operator child;
+  GroupID child;
   int limit;
 };
 

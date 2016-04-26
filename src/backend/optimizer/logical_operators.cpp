@@ -29,7 +29,7 @@ Operator LogicalGet::make(oid_t base_table, std::vector<oid_t> columns) {
 //===--------------------------------------------------------------------===//
 // Project
 //===--------------------------------------------------------------------===//
-Operator LogicalProject::make(Operator child) {
+Operator LogicalProject::make(GroupID child) {
   LogicalProject *project = new LogicalProject;
   project->child = child;
   return Operator(project);
@@ -38,7 +38,7 @@ Operator LogicalProject::make(Operator child) {
 //===--------------------------------------------------------------------===//
 // Filter
 //===--------------------------------------------------------------------===//
-Operator LogicalFilter::make(Operator child, QueryExpression *predicate) {
+Operator LogicalFilter::make(GroupID child, QueryExpression *predicate) {
   LogicalFilter *filter = new LogicalFilter;
   filter->child = child;
   filter->predicate = predicate;
@@ -48,7 +48,7 @@ Operator LogicalFilter::make(Operator child, QueryExpression *predicate) {
 //===--------------------------------------------------------------------===//
 // InnerJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalInnerJoin::make(Operator outer, Operator inner) {
+Operator LogicalInnerJoin::make(GroupID outer, GroupID inner) {
   LogicalInnerJoin *join = new LogicalInnerJoin;
   join->outer = outer;
   join->inner = inner;
@@ -58,7 +58,7 @@ Operator LogicalInnerJoin::make(Operator outer, Operator inner) {
 //===--------------------------------------------------------------------===//
 // LeftJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalLeftJoin::make(Operator outer, Operator inner) {
+Operator LogicalLeftJoin::make(GroupID outer, GroupID inner) {
   LogicalLeftJoin *join = new LogicalLeftJoin;
   join->outer = outer;
   join->inner = inner;
@@ -68,7 +68,7 @@ Operator LogicalLeftJoin::make(Operator outer, Operator inner) {
 //===--------------------------------------------------------------------===//
 // RightJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalRightJoin::make(Operator outer, Operator inner) {
+Operator LogicalRightJoin::make(GroupID outer, GroupID inner) {
   LogicalRightJoin *join = new LogicalRightJoin;
   join->outer = outer;
   join->inner = inner;
@@ -78,7 +78,7 @@ Operator LogicalRightJoin::make(Operator outer, Operator inner) {
 //===--------------------------------------------------------------------===//
 // OuterJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalOuterJoin::make(Operator outer, Operator inner) {
+Operator LogicalOuterJoin::make(GroupID outer, GroupID inner) {
   LogicalOuterJoin *join = new LogicalOuterJoin;
   join->outer = outer;
   join->inner = inner;
@@ -88,7 +88,7 @@ Operator LogicalOuterJoin::make(Operator outer, Operator inner) {
 //===--------------------------------------------------------------------===//
 // Aggregate
 //===--------------------------------------------------------------------===//
-Operator LogicalAggregate::make(Operator child) {
+Operator LogicalAggregate::make(GroupID child) {
   LogicalAggregate *agg = new LogicalAggregate;
   agg->child = child;
   return Operator(agg);
@@ -97,7 +97,7 @@ Operator LogicalAggregate::make(Operator child) {
 //===--------------------------------------------------------------------===//
 // Limit
 //===--------------------------------------------------------------------===//
-Operator LogicalLimit::make(Operator child, int limit) {
+Operator LogicalLimit::make(GroupID child, int limit) {
   LogicalLimit *limit_op = new LogicalLimit;
   limit_op->child = child;
   limit_op->limit = limit;;
@@ -159,6 +159,99 @@ template<>
 std::string OperatorNode<LogicalAggregate>::_name = "LogicalAggregate";
 template<>
 std::string OperatorNode<LogicalLimit>::_name = "LogicalLimit";
+
+template<>
+OpType OperatorNode<LogicalGet>::_type = OpType::Get;
+template<>
+OpType OperatorNode<LogicalProject>::_type = OpType::Project;
+template<>
+OpType OperatorNode<LogicalFilter>::_type = OpType::Filter;
+template<>
+OpType OperatorNode<LogicalInnerJoin>::_type = OpType::InnerJoin;
+template<>
+OpType OperatorNode<LogicalLeftJoin>::_type = OpType::LeftJoin;
+template<>
+OpType OperatorNode<LogicalRightJoin>::_type = OpType::RightJoin;
+template<>
+OpType OperatorNode<LogicalOuterJoin>::_type = OpType::OuterJoin;
+template<>
+OpType OperatorNode<LogicalAggregate>::_type = OpType::Aggregate;
+template<>
+OpType OperatorNode<LogicalLimit>::_type = OpType::Limit;
+
+template<>
+bool OperatorNode<LogicalGet>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalProject>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalFilter>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalInnerJoin>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalLeftJoin>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalRightJoin>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalOuterJoin>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalAggregate>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<LogicalLimit>::is_logical() const {
+  return true;
+}
+
+template<>
+bool OperatorNode<LogicalGet>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalProject>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalFilter>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalInnerJoin>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalLeftJoin>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalRightJoin>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalOuterJoin>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalAggregate>::is_physical() const {
+  return false;
+}
+template<>
+bool OperatorNode<LogicalLimit>::is_physical() const {
+  return false;
+}
 
 } /* namespace optimizer */
 } /* namespace peloton */
