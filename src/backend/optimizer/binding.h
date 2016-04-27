@@ -49,6 +49,7 @@ class Binding {
            std::vector<std::tuple<GroupID, size_t>>> binding_mapping;
 
   std::vector<std::vector<std::tuple<GroupID, size_t>>> pushed_binding_keys;
+  std::vector<std::tuple<GroupID, size_t>> pushed_root_keys;
 };
 
 //===--------------------------------------------------------------------===//

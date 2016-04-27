@@ -79,6 +79,7 @@ class ChildVisitor : public OperatorVisitor {
 Binding::Binding(std::tuple<GroupID, size_t> item_key)
   : root_key(item_key)
 {
+  binding_mapping.insert({root_key, {}});
 }
 
 std::tuple<GroupID, size_t> Binding::GetRootKey() const {
@@ -93,13 +94,32 @@ void Binding::PushBinding(const Binding &binding) {
     binding_mapping.insert(kv);
     inserted_keys.push_back(kv.first);
   }
+  // Add child key
+  binding_mapping.at(root_key).push_back(binding.GetRootKey());
+  pushed_root_keys.push_back(binding.GetRootKey());
 }
 
 void Binding::PopBinding() {
+  assert(!pushed_binding_keys.empty());
+
   for (const std::tuple<GroupID, size_t>& key : pushed_binding_keys.back()) {
     assert(binding_mapping.erase(key) == 1);
   }
   pushed_binding_keys.pop_back();
+
+  std::tuple<GroupID, size_t> binding_key = pushed_root_keys.back();
+  pushed_root_keys.pop_back();
+
+  auto& root_mappings = binding_mapping.at(root_key);
+  bool found = false;
+  for (auto it = root_mappings.begin(); it != root_mappings.end(); ++it) {
+    if (*it == binding_key) {
+      root_mappings.erase(it);
+      found = true;
+      break;
+    }
+  }
+  assert(found);
 }
 
 const std::vector<std::tuple<GroupID, size_t>>& Binding::GetItemChildMapping(
@@ -178,8 +198,8 @@ ItemBindingIterator::ItemBindingIterator(const std::vector<Group> &groups,
   if (child_groups.size() != child_patterns.size()) return;
 
   // Find all bindings for children
-  children_bindings.resize(child_groups.size());
-  children_bindings_pos.resize(child_groups.size());
+  children_bindings.resize(child_groups.size(), {});
+  children_bindings_pos.resize(child_groups.size(), 0);
   for (size_t i = 0; i < child_groups.size(); ++i) {
     // Try to find a match in the given group
     std::vector<Binding>& child_bindings = children_bindings[i];
