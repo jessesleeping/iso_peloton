@@ -99,7 +99,7 @@ void Optimizer::ExploreItem(GroupID id,
 {
   std::shared_ptr<Pattern> pattern = rule.GetMatchPattern();
 
-  ItemBindingIterator iterator(groups, id, item_index, pattern);
+  ItemBindingIterator iterator(*this, id, item_index, pattern);
   while (iterator.HasNext()) {
     Binding binding = iterator.Next();
     std::shared_ptr<OpPlanNode> plan = BindingToOpPlan(groups, binding);
@@ -111,6 +111,8 @@ void Optimizer::ExploreItem(GroupID id,
       // the newly applied rule
       std::vector<std::shared_ptr<OpPlanNode>> output_plans;
       rule.Transform(plan, output_plans);
+
+      // Integrate transformed plans back into groups and explore/cost
     }
   }
 }

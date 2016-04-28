@@ -32,10 +32,15 @@ class Group {
 
   void add_item(Operator op);
 
+  void set_explored(size_t item_index);
+
   const std::vector<Operator> &GetOperators() const;
+
+  const std::vector<bool> &GetExploredFlags() const;
 
  private:
   std::vector<Operator> items;
+  std::vector<bool> explored_flags;
   std::map<std::vector<Property>, size_t> lowest_cost_items;
 };
 

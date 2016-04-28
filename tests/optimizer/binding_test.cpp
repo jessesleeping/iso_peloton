@@ -12,6 +12,9 @@
 
 #include "harness.h"
 
+#define private public
+
+#include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/binding.h"
 #include "backend/optimizer/logical_operators.h"
 
@@ -27,8 +30,10 @@ using namespace optimizer;
 class BindingTests : public PelotonTest {};
 
 TEST_F(BindingTests, SimpleMatchTest) {
+  Optimizer optimizer;
+
   // Make groups to match against
-  std::vector<Group> groups;
+  std::vector<Group> &groups = optimizer.groups;
 
   GroupID join_id;
   GroupID root_group_id;
@@ -64,7 +69,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
   root->add_child(join);
 
   {
-    GroupBindingIterator iter(groups, root_group_id, root);
+    GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_FALSE(iter.HasNext());
   }
@@ -72,7 +77,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
   join->add_child(right_relation);
 
   {
-    GroupBindingIterator iter(groups, root_group_id, root);
+    GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_TRUE(iter.HasNext());
     Binding binding = iter.Next();
@@ -85,7 +90,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
   groups[root_group_id].add_item(LogicalProject::make(join_id));
 
   {
-    GroupBindingIterator iter(groups, root_group_id, root);
+    GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_TRUE(iter.HasNext());
     Binding binding = iter.Next();

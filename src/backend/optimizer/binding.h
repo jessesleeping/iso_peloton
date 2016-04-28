@@ -23,6 +23,8 @@
 namespace peloton {
 namespace optimizer {
 
+class Optimizer;
+
 //===--------------------------------------------------------------------===//
 // Binding
 //===--------------------------------------------------------------------===//
@@ -57,16 +59,22 @@ class Binding {
 //===--------------------------------------------------------------------===//
 class BindingIterator {
  public:
+  BindingIterator(Optimizer &optimizer);
+
   virtual ~BindingIterator() {};
 
   virtual bool HasNext() = 0;
 
   virtual Binding Next() = 0;
+
+ protected:
+  Optimizer &optimizer;
+  std::vector<Group> &groups;
 };
 
 class GroupBindingIterator : public BindingIterator {
  public:
-  GroupBindingIterator(const std::vector<Group> &groups,
+  GroupBindingIterator(Optimizer &optimizer,
                        GroupID id,
                        std::shared_ptr<Pattern> pattern);
 
@@ -75,11 +83,11 @@ class GroupBindingIterator : public BindingIterator {
   Binding Next() override;
 
  private:
-  const std::vector<Group> &groups;
   GroupID group_id;
   std::shared_ptr<Pattern> pattern;
-  const Group &target_group;
+  Group &target_group;
   const std::vector<Operator> &target_group_items;
+  const std::vector<bool> &target_group_explored;
 
   size_t current_item_index;
   std::unique_ptr<BindingIterator> current_iterator;
@@ -87,7 +95,7 @@ class GroupBindingIterator : public BindingIterator {
 
 class ItemBindingIterator : public BindingIterator {
  public:
-  ItemBindingIterator(const std::vector<Group> &groups,
+  ItemBindingIterator(Optimizer &optimizer,
                       GroupID id,
                       size_t item_index,
                       std::shared_ptr<Pattern> pattern);
@@ -97,7 +105,6 @@ class ItemBindingIterator : public BindingIterator {
   Binding Next() override;
 
  private:
-  const std::vector<Group> &groups;
   GroupID group_id;
   size_t item_index;
   std::shared_ptr<Pattern> pattern;

@@ -25,10 +25,14 @@
 namespace peloton {
 namespace optimizer {
 
+class BindingIterator;
+class GroupBindingIterator;
 //===--------------------------------------------------------------------===//
 // Optimizer
 //===--------------------------------------------------------------------===//
 class Optimizer {
+  friend class BindingIterator;
+  friend class GroupBindingIterator;
  public:
   Optimizer(const Optimizer &) = delete;
   Optimizer &operator=(const Optimizer &) = delete;

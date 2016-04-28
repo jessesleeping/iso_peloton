@@ -12,6 +12,7 @@
 
 #include "backend/optimizer/binding.h"
 #include "backend/optimizer/operator_visitor.h"
+#include "backend/optimizer/optimizer.h"
 
 #include <cassert>
 
@@ -129,18 +130,39 @@ const std::vector<std::tuple<GroupID, size_t>>& Binding::GetItemChildMapping(
 }
 
 //===--------------------------------------------------------------------===//
+// Base Binding Iterator
+//===--------------------------------------------------------------------===//
+BindingIterator::BindingIterator(Optimizer &optimizer)
+  : optimizer(optimizer), groups(optimizer.groups)
+{
+}
+
+//===--------------------------------------------------------------------===//
 // Group Binding Iterator
 //===--------------------------------------------------------------------===//
-GroupBindingIterator::GroupBindingIterator(const std::vector<Group> &groups,
+GroupBindingIterator::GroupBindingIterator(Optimizer &optimizer,
                                            GroupID id,
                                            std::shared_ptr<Pattern> pattern)
-  : groups(groups),
+  : BindingIterator(optimizer),
     group_id(id),
     pattern(pattern),
     target_group(groups[id]),
     target_group_items(target_group.GetOperators()),
+    target_group_explored(target_group.GetExploredFlags()),
     current_item_index(0)
 {
+  // We'd like to only explore rules which we know will produce a match of our
+  // current pattern. However, because our rules don't currently expose the
+  // structure of the output they produce after a transformation, we must be
+  // conservative and apply all rules
+  for (size_t i = 0; i < target_group_items.size(); ++i) {
+    if (!target_group_explored[i]) {
+      target_group.set_explored(i);
+      for (const Rule &rule : optimizer.rules) {
+        optimizer.ExploreItem(group_id, i, rule);
+      }
+    }
+  }
 }
 
 bool GroupBindingIterator::HasNext() {
@@ -156,7 +178,10 @@ bool GroupBindingIterator::HasNext() {
     // Keep checking item iterators until we find a match
     while (current_item_index < target_group_items.size()) {
       current_iterator.reset(
-        new ItemBindingIterator(groups, group_id, current_item_index, pattern));
+        new ItemBindingIterator(optimizer,
+                                group_id,
+                                current_item_index,
+                                pattern));
 
       if (current_iterator->HasNext()) {
         break;
@@ -177,11 +202,11 @@ Binding GroupBindingIterator::Next() {
 //===--------------------------------------------------------------------===//
 // Item Binding Iterator
 //===--------------------------------------------------------------------===//
-ItemBindingIterator::ItemBindingIterator(const std::vector<Group> &groups,
+ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
                                          GroupID id,
                                          size_t item_index,
                                          std::shared_ptr<Pattern> pattern)
-  : groups(groups),
+  : BindingIterator(optimizer),
     group_id(id),
     item_index(item_index),
     pattern(pattern),
@@ -203,7 +228,7 @@ ItemBindingIterator::ItemBindingIterator(const std::vector<Group> &groups,
   for (size_t i = 0; i < child_groups.size(); ++i) {
     // Try to find a match in the given group
     std::vector<Binding>& child_bindings = children_bindings[i];
-    GroupBindingIterator iterator(groups,
+    GroupBindingIterator iterator(optimizer,
                                   child_groups[i],
                                   child_patterns[i]);
 
