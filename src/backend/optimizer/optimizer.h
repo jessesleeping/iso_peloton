@@ -60,7 +60,6 @@ class Optimizer {
    * return: the best physical operator tree for the given group
    */
   Operator OptimizeGroup(GroupID id,
-                         const Group &group,
                          std::vector<Property> requirements);
 
   /*
@@ -68,7 +67,6 @@ class Optimizer {
    */
   Operator OptimizeItem(GroupID id,
                         size_t item_index,
-                        Operator item,
                         std::vector<Property> requirements);
 
   /* Explore - check the operator tree root for the given pattern
@@ -77,7 +75,7 @@ class Optimizer {
    * pattern: an operator tree representing a query
    * return: the best physical plan which represents the given operator tree
    */
-  void ExploreGroup(GroupID id, const Group &group, const Rule &rule);
+  void ExploreGroup(GroupID id, const Rule &rule);
 
   /* Explore - check the operator tree root for the given pattern
    *
@@ -87,7 +85,6 @@ class Optimizer {
    */
   void ExploreItem(GroupID id,
                    size_t item_index,
-                   Operator item,
                    const Rule &rule);
 
   /* TransformOperator - apply the given rule to the operator tree root to

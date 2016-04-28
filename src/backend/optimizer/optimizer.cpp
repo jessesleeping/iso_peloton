@@ -56,14 +56,12 @@ Operator Optimizer::TransformQueryTree(std::shared_ptr<Select> tree) {
 }
 
 Operator Optimizer::OptimizeGroup(GroupID id,
-                                  const Group &group,
                                   std::vector<Property> requirements)
 {
-  const std::vector<Operator> &items = group.GetOperators();
+  const std::vector<Operator> &items = groups[id].GetOperators();
   for (size_t item_index = 0; item_index < items.size(); ++item_index) {
     OptimizeItem(id,
                  item_index,
-                 group.GetOperators()[item_index],
                  requirements);
   }
 
@@ -73,7 +71,6 @@ Operator Optimizer::OptimizeGroup(GroupID id,
 
 Operator Optimizer::OptimizeItem(GroupID group_id,
                                  size_t item_index,
-                                 Operator item,
                                  std::vector<Property> requirements)
 {
   // Apply all rules to operator which match. We apply all rules to one operator
@@ -82,36 +79,40 @@ Operator Optimizer::OptimizeItem(GroupID group_id,
   // a match for a previously applied rule, but it is missed because the prev
   // rule was already checked
   for (const Rule &rule : rules) {
-    ExploreItem(group_id, item_index, item, rule);
+    ExploreItem(group_id, item_index, rule);
   }
   (void)requirements;
   return Operator();
 }
 
-void Optimizer::ExploreGroup(GroupID id, const Group &group, const Rule &rule) {
+void Optimizer::ExploreGroup(GroupID id, const Rule &rule) {
   // for (Operator op : group.GetOperators()) {
   //   ExploreItem(op, rule);
   // }
   (void)id;
-  (void)group;
   (void)rule;
 }
 
 void Optimizer::ExploreItem(GroupID id,
                             size_t item_index,
-                            Operator item,
                             const Rule &rule)
 {
   std::shared_ptr<Pattern> pattern = rule.GetMatchPattern();
 
   ItemBindingIterator iterator(groups, id, item_index, pattern);
-  (void)iterator;
-  (void)item;
-  // for (const Binding &binding : iter) {
-  //   // Check if the rule can be properly applied to this binding
-  //   if (rule.Check(binding)) {
-  //   }
-  // }
+  while (iterator.HasNext()) {
+    Binding binding = iterator.Next();
+    std::shared_ptr<OpPlanNode> plan = BindingToOpPlan(groups, binding);
+    // Check rule condition function
+    if (rule.Check(plan)) {
+      // Apply rule transformations
+      // We need to be able to analyze the transformations performed by this
+      // rule in order to perform deduplication and launch an exploration of
+      // the newly applied rule
+      std::vector<std::shared_ptr<OpPlanNode>> output_plans;
+      rule.Transform(plan, output_plans);
+    }
+  }
 }
 
 }  // namespace optimizer

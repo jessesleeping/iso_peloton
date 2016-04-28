@@ -36,7 +36,7 @@ class Binding {
 
   void PopBinding();
 
-  const std::vector<std::tuple<GroupID, size_t>>& GetItemChildMapping(
+  const std::vector<std::tuple<GroupID, size_t>> &GetItemChildMapping(
     const std::tuple<GroupID, size_t>& key) const;
 
  private:
@@ -57,6 +57,8 @@ class Binding {
 //===--------------------------------------------------------------------===//
 class BindingIterator {
  public:
+  virtual ~BindingIterator() {};
+
   virtual bool HasNext() = 0;
 
   virtual Binding Next() = 0;

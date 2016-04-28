@@ -30,6 +30,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
   // Make groups to match against
   std::vector<Group> groups;
 
+  GroupID join_id;
   GroupID root_group_id;
   {
     Group right_group;
@@ -45,7 +46,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
     Group join_group;
     join_group.add_item(LogicalInnerJoin::make(left_id, right_id));
     groups.push_back(join_group);
-    GroupID join_id = groups.size() - 1;
+    join_id = groups.size() - 1;
 
     Group root_group;
     root_group.add_item(LogicalProject::make(join_id));
@@ -59,16 +60,45 @@ TEST_F(BindingTests, SimpleMatchTest) {
   auto join = std::make_shared<Pattern>(OpType::InnerJoin);
   auto root = std::make_shared<Pattern>(OpType::Project);
 
-  join->add_child(right_relation);
   join->add_child(left_relation);
   root->add_child(join);
 
-  GroupBindingIterator iter(groups, root_group_id, root);
+  {
+    GroupBindingIterator iter(groups, root_group_id, root);
 
-  EXPECT_TRUE(iter.HasNext());
-  Binding binding = iter.Next();
-  EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 0));
-  EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+    EXPECT_FALSE(iter.HasNext());
+  }
+
+  join->add_child(right_relation);
+
+  {
+    GroupBindingIterator iter(groups, root_group_id, root);
+
+    EXPECT_TRUE(iter.HasNext());
+    Binding binding = iter.Next();
+    EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 0));
+    EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+
+    EXPECT_FALSE(iter.HasNext());
+  }
+
+  groups[root_group_id].add_item(LogicalProject::make(join_id));
+
+  {
+    GroupBindingIterator iter(groups, root_group_id, root);
+
+    EXPECT_TRUE(iter.HasNext());
+    Binding binding = iter.Next();
+    EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 0));
+    EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+
+    EXPECT_TRUE(iter.HasNext());
+    binding = iter.Next();
+    EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 1));
+    EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+
+    EXPECT_FALSE(iter.HasNext());
+  }
 }
 
 } /* namespace test */

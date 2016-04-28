@@ -13,6 +13,7 @@
 #pragma once
 
 #include "backend/optimizer/binding.h"
+#include "backend/optimizer/op_plan_node.h"
 
 #include <memory>
 
@@ -25,10 +26,11 @@ class Rule {
 
   std::shared_ptr<Pattern> GetMatchPattern() const { return match_pattern; }
 
-  virtual bool Check(const std::vector<Group> &groups,
-                     const Binding &binding) const = 0;
+  virtual bool Check(std::shared_ptr<OpPlanNode> plan) const = 0;
 
-  virtual Operator Transform(Operator item) const = 0;
+  virtual void Transform(
+    std::shared_ptr<OpPlanNode> input,
+    std::vector<std::shared_ptr<OpPlanNode>> &transformed) const = 0;
 
  private:
   std::shared_ptr<Pattern> match_pattern;

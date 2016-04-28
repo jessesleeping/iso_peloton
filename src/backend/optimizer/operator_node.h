@@ -23,7 +23,7 @@ enum class OpType {
   // Special match operators
   Leaf,
   Tree,
-  //
+  // Logical ops
   Get,
   Project,
   Filter,
@@ -41,7 +41,9 @@ enum class OpType {
 class OperatorVisitor;
 
 struct BaseOperatorNode {
-  BaseOperatorNode() {};
+  BaseOperatorNode() {}
+
+  virtual ~BaseOperatorNode() {}
 
   virtual void accept(OperatorVisitor *v) const = 0;
 

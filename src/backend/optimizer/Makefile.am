@@ -15,7 +15,8 @@ optimizer_FILES = \
 				backend/optimizer/operator_visitor.cpp \
 				backend/optimizer/group.cpp \
 				backend/optimizer/pattern.cpp \
-				backend/optimizer/binding.cpp
+				backend/optimizer/binding.cpp \
+				backend/optimizer/op_plan_node.cpp
 
 optimizer_INCLUDES = \
 				   -I$(srcdir)/backend/optimizer
