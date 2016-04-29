@@ -20,6 +20,16 @@ namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
+// Leaf
+//===--------------------------------------------------------------------===//
+class LeafOperator : OperatorNode<LeafOperator> {
+ public:
+  static Operator make(GroupID group);
+
+  GroupID origin_group;
+};
+
+//===--------------------------------------------------------------------===//
 // Get
 //===--------------------------------------------------------------------===//
 class LogicalGet : public OperatorNode<LogicalGet> {

@@ -16,6 +16,7 @@
 
 #include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/binding.h"
+#include "backend/optimizer/op_plan_node.h"
 #include "backend/optimizer/logical_operators.h"
 
 namespace peloton {
@@ -65,8 +66,8 @@ TEST_F(BindingTests, SimpleMatchTest) {
   auto join = std::make_shared<Pattern>(OpType::InnerJoin);
   auto root = std::make_shared<Pattern>(OpType::Project);
 
-  join->add_child(left_relation);
-  root->add_child(join);
+  join->AddChild(left_relation);
+  root->AddChild(join);
 
   {
     GroupBindingIterator iter(optimizer, root_group_id, root);
@@ -74,15 +75,15 @@ TEST_F(BindingTests, SimpleMatchTest) {
     EXPECT_FALSE(iter.HasNext());
   }
 
-  join->add_child(right_relation);
+  join->AddChild(right_relation);
 
   {
     GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_TRUE(iter.HasNext());
-    Binding binding = iter.Next();
-    EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 0));
-    EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+    std::shared_ptr<OpPlanNode> binding = iter.Next();
+    EXPECT_EQ(binding->Op().type(), OpType::Project);
+    EXPECT_EQ(binding->Children().size(), 1);
 
     EXPECT_FALSE(iter.HasNext());
   }
@@ -93,14 +94,14 @@ TEST_F(BindingTests, SimpleMatchTest) {
     GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_TRUE(iter.HasNext());
-    Binding binding = iter.Next();
-    EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 0));
-    EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+    std::shared_ptr<OpPlanNode> binding = iter.Next();
+    EXPECT_EQ(binding->Op().type(), OpType::Project);
+    EXPECT_EQ(binding->Children().size(), 1);
 
     EXPECT_TRUE(iter.HasNext());
     binding = iter.Next();
-    EXPECT_EQ(binding.GetRootKey(), std::make_tuple(root_group_id, 1));
-    EXPECT_EQ(binding.GetItemChildMapping(binding.GetRootKey()).size(), 1);
+    EXPECT_EQ(binding->Op().type(), OpType::Project);
+    EXPECT_EQ(binding->Children().size(), 1);
 
     EXPECT_FALSE(iter.HasNext());
   }

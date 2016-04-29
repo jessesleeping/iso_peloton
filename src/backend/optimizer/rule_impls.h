@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// pattern.h
+// rule_impls.h
 //
-// Identification: src/backend/optimizer/pattern.h
+// Identification: src/backend/optimizer/rule_impls.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -12,27 +12,22 @@
 
 #pragma once
 
-#include "backend/optimizer/operator_node.h"
+#include "backend/optimizer/rule.h"
 
-#include <vector>
 #include <memory>
 
 namespace peloton {
 namespace optimizer {
 
-class Pattern {
+class InnerJoinCommutativity : public Rule {
  public:
-  Pattern(OpType op);
+  InnerJoinCommutativity();
 
-  void AddChild(std::shared_ptr<Pattern> child);
+  bool Check(std::shared_ptr<OpPlanNode> plan) const override;
 
-  const std::vector<std::shared_ptr<Pattern>> &Children() const;
-
-  OpType Type() const;
-
- private:
-  OpType _type;
-  std::vector<std::shared_ptr<Pattern>> children;
+  void Transform(
+    std::shared_ptr<OpPlanNode> input,
+    std::vector<std::shared_ptr<OpPlanNode>> &transformed) const override;
 };
 
 } /* namespace optimizer */

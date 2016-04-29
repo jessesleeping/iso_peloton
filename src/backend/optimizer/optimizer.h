@@ -14,6 +14,7 @@
 
 #include "backend/optimizer/query_operators.h"
 #include "backend/optimizer/operator_node.h"
+#include "backend/optimizer/binding.h"
 #include "backend/optimizer/pattern.h"
 #include "backend/optimizer/property.h"
 #include "backend/optimizer/rule.h"

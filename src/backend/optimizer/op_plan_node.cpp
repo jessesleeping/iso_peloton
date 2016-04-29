@@ -12,46 +12,52 @@
 
 #include "backend/optimizer/op_plan_node.h"
 
+#include <limits>
+
 namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
 // Operator Plan Node
 //===--------------------------------------------------------------------===//
-OpPlanNode::OpPlanNode(Operator op)
-  : op(op)
+OpPlanNode::OpPlanNode(std::vector<Group> &groups,
+                       GroupID id,
+                       size_t item_index)
+  : id(id), item_index(item_index), op(groups[id].GetOperators()[item_index])
 {
 }
 
-void OpPlanNode::add_child(std::shared_ptr<OpPlanNode> op) {
+OpPlanNode::OpPlanNode(Operator op)
+  : id(UNDEFINED_GROUP), item_index(0), op(op)
+{
+}
+
+void OpPlanNode::PushChild(std::shared_ptr<OpPlanNode> op) {
   children.push_back(op);
 }
 
-void OpPlanNode::accept(OpPlanVisitor *v) const {
+void OpPlanNode::PopChild() {
+  children.pop_back();
+}
+
+const std::vector<std::shared_ptr<OpPlanNode>> &OpPlanNode::Children() const {
+  return children;
+}
+
+void OpPlanNode::Accept(OpPlanVisitor *v) const {
   (void)v;
 }
 
-std::shared_ptr<OpPlanNode> BindingToOpPlan(const std::vector<Group> &groups,
-                                            const Binding &binding)
-{
-  return BindingToOpPlan(groups, binding, binding.GetRootKey());
+GroupID OpPlanNode::ID() const {
+  return id;
 }
 
-std::shared_ptr<OpPlanNode>
-BindingToOpPlan(const std::vector<Group> &groups,
-                const Binding &binding,
-                const std::tuple<GroupID, size_t> &root_key)
-{
-  std::shared_ptr<OpPlanNode> root_plan(
-    std::make_shared<OpPlanNode>(
-      groups[std::get<0>(root_key)].GetOperators()[std::get<1>(root_key)]));
+size_t OpPlanNode::ItemIndex() const {
+  return item_index;
+}
 
-  for (const std::tuple<GroupID, size_t> &child_key :
-         binding.GetItemChildMapping(root_key))
-  {
-    root_plan->add_child(BindingToOpPlan(groups, binding, child_key));
-  }
-  return root_plan;
+const Operator &OpPlanNode::Op() const {
+  return op;
 }
 
 } /* namespace optimizer */

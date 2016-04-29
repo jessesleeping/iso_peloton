@@ -101,8 +101,7 @@ void Optimizer::ExploreItem(GroupID id,
 
   ItemBindingIterator iterator(*this, id, item_index, pattern);
   while (iterator.HasNext()) {
-    Binding binding = iterator.Next();
-    std::shared_ptr<OpPlanNode> plan = BindingToOpPlan(groups, binding);
+    std::shared_ptr<OpPlanNode> plan = iterator.Next();
     // Check rule condition function
     if (rule.Check(plan)) {
       // Apply rule transformations

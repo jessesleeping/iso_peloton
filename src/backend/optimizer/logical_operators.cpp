@@ -15,6 +15,14 @@
 
 namespace peloton {
 namespace optimizer {
+//===--------------------------------------------------------------------===//
+// Leaf
+//===--------------------------------------------------------------------===//
+Operator LeafOperator::make(GroupID group) {
+  LeafOperator *op = new LeafOperator;
+  op->origin_group = group;
+  return Operator(op);
+}
 
 //===--------------------------------------------------------------------===//
 // Get
@@ -105,6 +113,10 @@ Operator LogicalLimit::make(GroupID child, int limit) {
 }
 
 template<>
+void OperatorNode<LeafOperator>::accept(OperatorVisitor *v) const {
+  v->visit((const LeafOperator *)this);
+}
+template<>
 void OperatorNode<LogicalGet>::accept(OperatorVisitor *v) const {
   v->visit((const LogicalGet *)this);
 }
@@ -142,6 +154,8 @@ void OperatorNode<LogicalLimit>::accept(OperatorVisitor *v) const {
 }
 
 template<>
+std::string OperatorNode<LeafOperator>::_name = "LeafOperator";
+template<>
 std::string OperatorNode<LogicalGet>::_name = "LogicalGet";
 template<>
 std::string OperatorNode<LogicalProject>::_name = "LogicalProject";
@@ -161,6 +175,8 @@ template<>
 std::string OperatorNode<LogicalLimit>::_name = "LogicalLimit";
 
 template<>
+OpType OperatorNode<LeafOperator>::_type = OpType::Leaf;
+template<>
 OpType OperatorNode<LogicalGet>::_type = OpType::Get;
 template<>
 OpType OperatorNode<LogicalProject>::_type = OpType::Project;
@@ -179,6 +195,10 @@ OpType OperatorNode<LogicalAggregate>::_type = OpType::Aggregate;
 template<>
 OpType OperatorNode<LogicalLimit>::_type = OpType::Limit;
 
+template<>
+bool OperatorNode<LeafOperator>::is_logical() const {
+  return false;
+}
 template<>
 bool OperatorNode<LogicalGet>::is_logical() const {
   return true;
@@ -216,6 +236,10 @@ bool OperatorNode<LogicalLimit>::is_logical() const {
   return true;
 }
 
+template<>
+bool OperatorNode<LeafOperator>::is_physical() const {
+  return false;
+}
 template<>
 bool OperatorNode<LogicalGet>::is_physical() const {
   return false;

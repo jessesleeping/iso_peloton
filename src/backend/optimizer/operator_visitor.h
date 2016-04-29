@@ -25,6 +25,7 @@ class OperatorVisitor {
  public:
   virtual ~OperatorVisitor() {};
 
+  virtual void visit(const LeafOperator*);
   virtual void visit(const LogicalGet*);
   virtual void visit(const LogicalProject*);
   virtual void visit(const LogicalFilter*);

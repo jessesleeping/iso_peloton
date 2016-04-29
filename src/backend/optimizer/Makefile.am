@@ -16,7 +16,9 @@ optimizer_FILES = \
 				backend/optimizer/group.cpp \
 				backend/optimizer/pattern.cpp \
 				backend/optimizer/binding.cpp \
-				backend/optimizer/op_plan_node.cpp
+				backend/optimizer/op_plan_node.cpp \
+				backend/optimizer/rule_impls.cpp
+
 
 optimizer_INCLUDES = \
 				   -I$(srcdir)/backend/optimizer

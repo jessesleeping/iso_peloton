@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "backend/optimizer/binding.h"
 #include "backend/optimizer/op_plan_node.h"
+#include "backend/optimizer/pattern.h"
 
 #include <memory>
 
@@ -32,7 +32,7 @@ class Rule {
     std::shared_ptr<OpPlanNode> input,
     std::vector<std::shared_ptr<OpPlanNode>> &transformed) const = 0;
 
- private:
+ protected:
   std::shared_ptr<Pattern> match_pattern;
 };
 

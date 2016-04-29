@@ -14,7 +14,6 @@
 
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/group.h"
-#include "backend/optimizer/binding.h"
 
 #include <string>
 #include <memory>
@@ -29,25 +28,33 @@ class OpPlanVisitor;
 
 class OpPlanNode {
 public:
+  OpPlanNode(std::vector<Group> &groups,
+             GroupID id,
+             size_t item_index);
+
   OpPlanNode(Operator op);
 
-  void add_child(std::shared_ptr<OpPlanNode> op);
+  void PushChild(std::shared_ptr<OpPlanNode> op);
 
-  void accept(OpPlanVisitor *v) const;
+  void PopChild();
+
+  const std::vector<std::shared_ptr<OpPlanNode>> &Children() const;
+
+  void Accept(OpPlanVisitor *v) const;
+
+  GroupID ID() const;
+
+  size_t ItemIndex() const;
+
+  const Operator &Op() const;
 
 private:
+  GroupID id;
+  size_t item_index;
   Operator op;
 
   std::vector<std::shared_ptr<OpPlanNode>> children;
 };
-
-std::shared_ptr<OpPlanNode> BindingToOpPlan(const std::vector<Group> &groups,
-                                            const Binding &binding);
-
-std::shared_ptr<OpPlanNode>
-BindingToOpPlan(const std::vector<Group> &groups,
-                const Binding &binding,
-                const std::tuple<GroupID, size_t> &root_key);
 
 } /* namespace optimizer */
 } /* namespace peloton */

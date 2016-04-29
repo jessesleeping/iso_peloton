@@ -19,6 +19,9 @@ namespace optimizer {
 // Operator Visitor
 //===--------------------------------------------------------------------===//
 
+void OperatorVisitor::visit(const LeafOperator*) {
+}
+
 void OperatorVisitor::visit(const LogicalGet*) {
 }
 

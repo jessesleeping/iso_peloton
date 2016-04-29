@@ -5,8 +5,13 @@
 ######################################################################
 
 check_PROGRAMS += \
-        binding_test
+        binding_test \
+        rule_test
 
 binding_test_SOURCES = \
 		optimizer/binding_test.cpp \
+		harness.cpp
+
+rule_test_SOURCES = \
+		optimizer/rule_test.cpp \
 		harness.cpp

@@ -92,16 +92,15 @@ public:
 
   bool defined() const;
 
-  template<typename T> const T *as() const;
+  template <typename T> const T *as() const {
+    if (node && typeid(*node) == typeid(T)) {
+      return (const T *)node.get();
+    }
+    return nullptr;
+  }
 
 private:
   std::shared_ptr<BaseOperatorNode> node;
-};
-
-//===--------------------------------------------------------------------===//
-// Leaf
-//===--------------------------------------------------------------------===//
-class LeafOperator : OperatorNode<LeafOperator> {
 };
 
 } /* namespace optimizer */

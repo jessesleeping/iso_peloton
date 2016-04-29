@@ -20,7 +20,7 @@ Pattern::Pattern(OpType op)
 {
 }
 
-void Pattern::add_child(std::shared_ptr<Pattern> child) {
+void Pattern::AddChild(std::shared_ptr<Pattern> child) {
   children.push_back(child);
 }
 
@@ -28,7 +28,7 @@ const std::vector<std::shared_ptr<Pattern>> &Pattern::Children() const {
   return children;
 }
 
-OpType Pattern::type() const {
+OpType Pattern::Type() const {
   return _type;
 }
 

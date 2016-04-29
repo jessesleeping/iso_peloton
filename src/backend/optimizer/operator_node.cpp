@@ -58,12 +58,5 @@ bool Operator::defined() const {
   return node != nullptr;
 }
 
-template <typename T> const T *Operator::as() const {
-  if (node && typeid(*node) == typeid(T)) {
-    return (const T *)node;
-  }
-  return nullptr;
-}
-
 } /* namespace optimizer */
 } /* namespace peloton */
