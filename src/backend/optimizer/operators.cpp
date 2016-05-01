@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "backend/optimizer/logical_operators.h"
+#include "backend/optimizer/operators.h"
 #include "backend/optimizer/operator_visitor.h"
 
 namespace peloton {
@@ -92,7 +92,6 @@ Operator LogicalOuterJoin::make(GroupID outer, GroupID inner) {
   join->inner = inner;
   return Operator(join);
 }
-
 //===--------------------------------------------------------------------===//
 // Aggregate
 //===--------------------------------------------------------------------===//
@@ -111,6 +110,57 @@ Operator LogicalLimit::make(GroupID child, int limit) {
   limit_op->limit = limit;;
   return Operator(limit_op);
 }
+
+//===--------------------------------------------------------------------===//
+// Scan
+//===--------------------------------------------------------------------===//
+Operator PhysicalScan::make(oid_t base_table, std::vector<oid_t> columns) {
+  PhysicalScan *get = new PhysicalScan;
+  get->base_table = base_table;
+  get->columns = columns;
+  return Operator(get);
+}
+
+//===--------------------------------------------------------------------===//
+// InnerHashJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalInnerHashJoin::make(GroupID outer, GroupID inner) {
+  PhysicalInnerHashJoin *join = new PhysicalInnerHashJoin;
+  join->outer = outer;
+  join->inner = inner;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
+// LeftHashJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalLeftHashJoin::make(GroupID outer, GroupID inner) {
+  PhysicalLeftHashJoin *join = new PhysicalLeftHashJoin;
+  join->outer = outer;
+  join->inner = inner;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
+// RightHashJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalRightHashJoin::make(GroupID outer, GroupID inner) {
+  PhysicalRightHashJoin *join = new PhysicalRightHashJoin;
+  join->outer = outer;
+  join->inner = inner;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
+// OuterHashJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalOuterHashJoin::make(GroupID outer, GroupID inner) {
+  PhysicalOuterHashJoin *join = new PhysicalOuterHashJoin;
+  join->outer = outer;
+  join->inner = inner;
+  return Operator(join);
+}
+
 
 template<>
 void OperatorNode<LeafOperator>::accept(OperatorVisitor *v) const {
@@ -152,6 +202,26 @@ template<>
 void OperatorNode<LogicalLimit>::accept(OperatorVisitor *v) const {
   v->visit((const LogicalLimit *)this);
 }
+template<>
+void OperatorNode<PhysicalScan>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalScan *)this);
+}
+template<>
+void OperatorNode<PhysicalInnerHashJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalInnerHashJoin *)this);
+}
+template<>
+void OperatorNode<PhysicalLeftHashJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalLeftHashJoin *)this);
+}
+template<>
+void OperatorNode<PhysicalRightHashJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalRightHashJoin *)this);
+}
+template<>
+void OperatorNode<PhysicalOuterHashJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalOuterHashJoin *)this);
+}
 
 template<>
 std::string OperatorNode<LeafOperator>::_name = "LeafOperator";
@@ -173,6 +243,16 @@ template<>
 std::string OperatorNode<LogicalAggregate>::_name = "LogicalAggregate";
 template<>
 std::string OperatorNode<LogicalLimit>::_name = "LogicalLimit";
+template<>
+std::string OperatorNode<PhysicalScan>::_name = "PhysicalScan";
+template<>
+std::string OperatorNode<PhysicalInnerHashJoin>::_name = "PhysicalInnerHashJoin";
+template<>
+std::string OperatorNode<PhysicalLeftHashJoin>::_name = "PhysicalLeftHashJoin";
+template<>
+std::string OperatorNode<PhysicalRightHashJoin>::_name = "PhysicalRightHashJoin";
+template<>
+std::string OperatorNode<PhysicalOuterHashJoin>::_name = "PhysicalOuterHashJoin";
 
 template<>
 OpType OperatorNode<LeafOperator>::_type = OpType::Leaf;
@@ -194,6 +274,16 @@ template<>
 OpType OperatorNode<LogicalAggregate>::_type = OpType::Aggregate;
 template<>
 OpType OperatorNode<LogicalLimit>::_type = OpType::Limit;
+template<>
+OpType OperatorNode<PhysicalScan>::_type = OpType::Scan;
+template<>
+OpType OperatorNode<PhysicalInnerHashJoin>::_type = OpType::InnerHashJoin;
+template<>
+OpType OperatorNode<PhysicalLeftHashJoin>::_type = OpType::LeftHashJoin;
+template<>
+OpType OperatorNode<PhysicalRightHashJoin>::_type = OpType::RightHashJoin;
+template<>
+OpType OperatorNode<PhysicalOuterHashJoin>::_type = OpType::OuterHashJoin;
 
 template<>
 bool OperatorNode<LeafOperator>::is_logical() const {
@@ -235,6 +325,26 @@ template<>
 bool OperatorNode<LogicalLimit>::is_logical() const {
   return true;
 }
+template<>
+bool OperatorNode<PhysicalScan>::is_logical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalInnerHashJoin>::is_logical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalLeftHashJoin>::is_logical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalRightHashJoin>::is_logical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalOuterHashJoin>::is_logical() const {
+  return false;
+}
 
 template<>
 bool OperatorNode<LeafOperator>::is_physical() const {
@@ -275,6 +385,26 @@ bool OperatorNode<LogicalAggregate>::is_physical() const {
 template<>
 bool OperatorNode<LogicalLimit>::is_physical() const {
   return false;
+}
+template<>
+bool OperatorNode<PhysicalScan>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalInnerHashJoin>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalLeftHashJoin>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalRightHashJoin>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalOuterHashJoin>::is_physical() const {
+  return true;
 }
 
 } /* namespace optimizer */

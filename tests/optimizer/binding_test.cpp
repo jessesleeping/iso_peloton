@@ -16,8 +16,8 @@
 
 #include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/binding.h"
-#include "backend/optimizer/op_plan_node.h"
-#include "backend/optimizer/logical_operators.h"
+#include "backend/optimizer/op_expression.h"
+#include "backend/optimizer/operators.h"
 
 namespace peloton {
 namespace test {
@@ -34,7 +34,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
   Optimizer optimizer;
 
   // Make groups to match against
-  std::vector<Group> &groups = optimizer.groups;
+  std::vector<Group> &groups = optimizer.memo.Groups();
 
   GroupID join_id;
   GroupID root_group_id;
@@ -81,7 +81,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
     GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_TRUE(iter.HasNext());
-    std::shared_ptr<OpPlanNode> binding = iter.Next();
+    std::shared_ptr<OpExpression> binding = iter.Next();
     EXPECT_EQ(binding->Op().type(), OpType::Project);
     EXPECT_EQ(binding->Children().size(), 1);
 
@@ -94,7 +94,7 @@ TEST_F(BindingTests, SimpleMatchTest) {
     GroupBindingIterator iter(optimizer, root_group_id, root);
 
     EXPECT_TRUE(iter.HasNext());
-    std::shared_ptr<OpPlanNode> binding = iter.Next();
+    std::shared_ptr<OpExpression> binding = iter.Next();
     EXPECT_EQ(binding->Op().type(), OpType::Project);
     EXPECT_EQ(binding->Children().size(), 1);
 

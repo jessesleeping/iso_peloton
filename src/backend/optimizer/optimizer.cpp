@@ -26,6 +26,9 @@
 namespace peloton {
 namespace optimizer {
 
+namespace {
+}
+
 //===--------------------------------------------------------------------===//
 // Optimizer
 //===--------------------------------------------------------------------===//
@@ -39,10 +42,16 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   std::shared_ptr<Select> select_tree)
 {
   // Generate initial operator tree from query tree
-  Operator initial_op_tree = TransformQueryTree(select_tree);
+  GroupID root_id = InsertQueryTree(select_tree);
 
-  // Find least cost plan for logical operator tree
-  planner::AbstractPlan* top_plan = nullptr;
+  // Get the physical properties the final plan must output
+  std::vector<Property> properties =
+    GetQueryTreeRequiredProperties(select_tree);
+
+  // Find least cost plan for root group
+  OpExpression optimizer_plan = OptimizeGroup(root_id, properties);
+
+  planner::AbstractPlan* top_plan = OptimizerPlanToPlannerPlan(optimizer_plan);
 
   std::shared_ptr<planner::AbstractPlan> final_plan(
     top_plan, bridge::PlanTransformer::CleanPlan);
@@ -50,15 +59,27 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   return final_plan;
 }
 
-Operator Optimizer::TransformQueryTree(std::shared_ptr<Select> tree) {
-  (void) tree;
-  return Operator();
+planner::AbstractPlan *Optimizer::OptimizerPlanToPlannerPlan(OpExpression plan) {
+  (void)plan;
+  return nullptr;
 }
 
-Operator Optimizer::OptimizeGroup(GroupID id,
-                                  std::vector<Property> requirements)
+GroupID Optimizer::InsertQueryTree(std::shared_ptr<Select> tree) {
+  (void) tree;
+  return 0;
+}
+
+std::vector<Property> Optimizer::GetQueryTreeRequiredProperties(
+  std::shared_ptr<Select> tree)
 {
-  const std::vector<Operator> &items = groups[id].GetOperators();
+  (void)tree;
+  return {};
+}
+
+OpExpression Optimizer::OptimizeGroup(GroupID id,
+                                    std::vector<Property> requirements)
+{
+  const std::vector<Operator> &items = memo.Groups()[id].GetOperators();
   for (size_t item_index = 0; item_index < items.size(); ++item_index) {
     OptimizeItem(id,
                  item_index,
@@ -69,9 +90,9 @@ Operator Optimizer::OptimizeGroup(GroupID id,
   return Operator();
 }
 
-Operator Optimizer::OptimizeItem(GroupID group_id,
-                                 size_t item_index,
-                                 std::vector<Property> requirements)
+OpExpression Optimizer::OptimizeItem(GroupID group_id,
+                                   size_t item_index,
+                                   std::vector<Property> requirements)
 {
   // Apply all rules to operator which match. We apply all rules to one operator
   // before moving on to the next operator in the group because then we avoid
@@ -101,14 +122,14 @@ void Optimizer::ExploreItem(GroupID id,
 
   ItemBindingIterator iterator(*this, id, item_index, pattern);
   while (iterator.HasNext()) {
-    std::shared_ptr<OpPlanNode> plan = iterator.Next();
+    std::shared_ptr<OpExpression> plan = iterator.Next();
     // Check rule condition function
     if (rule.Check(plan)) {
       // Apply rule transformations
       // We need to be able to analyze the transformations performed by this
       // rule in order to perform deduplication and launch an exploration of
       // the newly applied rule
-      std::vector<std::shared_ptr<OpPlanNode>> output_plans;
+      std::vector<std::shared_ptr<OpExpression>> output_plans;
       rule.Transform(plan, output_plans);
 
       // Integrate transformed plans back into groups and explore/cost

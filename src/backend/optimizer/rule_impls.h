@@ -23,11 +23,11 @@ class InnerJoinCommutativity : public Rule {
  public:
   InnerJoinCommutativity();
 
-  bool Check(std::shared_ptr<OpPlanNode> plan) const override;
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
 
   void Transform(
-    std::shared_ptr<OpPlanNode> input,
-    std::vector<std::shared_ptr<OpPlanNode>> &transformed) const override;
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
 };
 
 } /* namespace optimizer */

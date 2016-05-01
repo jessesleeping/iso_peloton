@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// op_plan_node.h
+// op_expression.h
 //
-// Identification: src/backend/optimizer/op_plan_node.h
+// Identification: src/backend/optimizer/op_expression.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -22,25 +22,25 @@ namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
-// Operator Plan Node
+// Operator Expr
 //===--------------------------------------------------------------------===//
-class OpPlanVisitor;
+class OpExpressionVisitor;
 
-class OpPlanNode {
+class OpExpression {
 public:
-  OpPlanNode(std::vector<Group> &groups,
+  OpExpression(std::vector<Group> &groups,
              GroupID id,
              size_t item_index);
 
-  OpPlanNode(Operator op);
+  OpExpression(Operator op);
 
-  void PushChild(std::shared_ptr<OpPlanNode> op);
+  void PushChild(std::shared_ptr<OpExpression> op);
 
   void PopChild();
 
-  const std::vector<std::shared_ptr<OpPlanNode>> &Children() const;
+  const std::vector<std::shared_ptr<OpExpression>> &Children() const;
 
-  void Accept(OpPlanVisitor *v) const;
+  void Accept(OpExpressionVisitor *v) const;
 
   GroupID ID() const;
 
@@ -53,7 +53,7 @@ private:
   size_t item_index;
   Operator op;
 
-  std::vector<std::shared_ptr<OpPlanNode>> children;
+  std::vector<std::shared_ptr<OpExpression>> children;
 };
 
 } /* namespace optimizer */

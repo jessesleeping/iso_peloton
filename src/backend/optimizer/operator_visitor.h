@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "backend/optimizer/logical_operators.h"
+#include "backend/optimizer/operators.h"
 
 namespace peloton {
 namespace optimizer {
@@ -35,6 +35,11 @@ class OperatorVisitor {
   virtual void visit(const LogicalOuterJoin*);
   virtual void visit(const LogicalAggregate*);
   virtual void visit(const LogicalLimit*);
+  virtual void visit(const PhysicalScan*);
+  virtual void visit(const PhysicalInnerHashJoin*);
+  virtual void visit(const PhysicalLeftHashJoin*);
+  virtual void visit(const PhysicalRightHashJoin*);
+  virtual void visit(const PhysicalOuterHashJoin*);
 };
 
 } /* namespace optimizer */

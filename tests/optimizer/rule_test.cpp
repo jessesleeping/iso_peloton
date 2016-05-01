@@ -17,8 +17,8 @@
 #include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/rule.h"
 #include "backend/optimizer/rule_impls.h"
-#include "backend/optimizer/op_plan_node.h"
-#include "backend/optimizer/logical_operators.h"
+#include "backend/optimizer/op_expression.h"
+#include "backend/optimizer/operators.h"
 
 namespace peloton {
 namespace test {
@@ -35,7 +35,7 @@ TEST_F(RuleTests, SimpleRuleApplyTest) {
   Optimizer optimizer;
 
   // Make groups to apply rule against
-  std::vector<Group> &groups = optimizer.groups;
+  std::vector<Group> &groups = optimizer.memo.Groups();
 
   GroupID right_id;
   GroupID left_id;
@@ -58,10 +58,10 @@ TEST_F(RuleTests, SimpleRuleApplyTest) {
   }
 
   // Build op plan node to match rule
-  auto left_get = std::make_shared<OpPlanNode>(groups, left_id, 0);
-  auto right_get = std::make_shared<OpPlanNode>(groups, right_id, 0);
+  auto left_get = std::make_shared<OpExpression>(groups, left_id, 0);
+  auto right_get = std::make_shared<OpExpression>(groups, right_id, 0);
 
-  auto join = std::make_shared<OpPlanNode>(groups, join_id, 0);
+  auto join = std::make_shared<OpExpression>(groups, join_id, 0);
   join->PushChild(left_get);
   join->PushChild(right_get);
 
@@ -70,7 +70,7 @@ TEST_F(RuleTests, SimpleRuleApplyTest) {
 
   EXPECT_TRUE(rule.Check(join));
 
-  std::vector<std::shared_ptr<OpPlanNode>> outputs;
+  std::vector<std::shared_ptr<OpExpression>> outputs;
   rule.Transform(join, outputs);
   EXPECT_EQ(outputs.size(), 1);
 }

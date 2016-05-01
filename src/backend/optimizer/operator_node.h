@@ -33,6 +33,12 @@ enum class OpType {
   OuterJoin,
   Aggregate,
   Limit,
+  // Physical ops
+  Scan,
+  InnerHashJoin,
+  LeftHashJoin,
+  RightHashJoin,
+  OuterHashJoin,
 };
 
 //===--------------------------------------------------------------------===//

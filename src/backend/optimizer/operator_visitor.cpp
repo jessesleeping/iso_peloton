@@ -49,5 +49,20 @@ void OperatorVisitor::visit(const LogicalAggregate*) {
 void OperatorVisitor::visit(const LogicalLimit*) {
 }
 
+void OperatorVisitor::visit(const PhysicalScan*) {
+}
+
+void OperatorVisitor::visit(const PhysicalInnerHashJoin*) {
+}
+
+void OperatorVisitor::visit(const PhysicalLeftHashJoin*) {
+}
+
+void OperatorVisitor::visit(const PhysicalRightHashJoin*) {
+}
+
+void OperatorVisitor::visit(const PhysicalOuterHashJoin*) {
+}
+
 } /* namespace optimizer */
 } /* namespace peloton */

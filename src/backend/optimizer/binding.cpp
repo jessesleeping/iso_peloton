@@ -78,7 +78,7 @@ class ChildVisitor : public OperatorVisitor {
 // Base Binding Iterator
 //===--------------------------------------------------------------------===//
 BindingIterator::BindingIterator(Optimizer &optimizer)
-  : optimizer(optimizer), groups(optimizer.groups)
+  : optimizer(optimizer), groups(optimizer.memo.Groups())
 {
 }
 
@@ -144,10 +144,10 @@ bool GroupBindingIterator::HasNext() {
   return current_iterator != nullptr;
 }
 
-std::shared_ptr<OpPlanNode> GroupBindingIterator::Next() {
+std::shared_ptr<OpExpression> GroupBindingIterator::Next() {
   if (pattern->Type() == OpType::Leaf) {
     current_item_index = target_group_items.size();
-    return std::make_shared<OpPlanNode>(LeafOperator::make(group_id));
+    return std::make_shared<OpExpression>(LeafOperator::make(group_id));
   }
   return current_iterator->Next();
 }
@@ -165,7 +165,7 @@ ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
     pattern(pattern),
     first(true),
     has_next(false),
-    current_binding(std::make_shared<OpPlanNode>(groups, id, item_index))
+    current_binding(std::make_shared<OpExpression>(groups, id, item_index))
 {
   Operator item = groups[id].GetOperators()[item_index];
   if (item.type() != pattern->Type()) return;
@@ -181,7 +181,7 @@ ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
   children_bindings_pos.resize(child_groups.size(), 0);
   for (size_t i = 0; i < child_groups.size(); ++i) {
     // Try to find a match in the given group
-    std::vector<std::shared_ptr<OpPlanNode>>& child_bindings =
+    std::vector<std::shared_ptr<OpExpression>>& child_bindings =
       children_bindings[i];
     GroupBindingIterator iterator(optimizer,
                                   child_groups[i],
@@ -212,7 +212,7 @@ bool ItemBindingIterator::HasNext() {
     for (i = 0; i < size; ++i) {
       current_binding->PopChild();
 
-      const std::vector<std::shared_ptr<OpPlanNode>>& child_binding =
+      const std::vector<std::shared_ptr<OpExpression>>& child_binding =
         children_bindings[size - 1 - i];
 
       size_t new_pos = ++children_bindings_pos[size - 1 - i];
@@ -230,9 +230,9 @@ bool ItemBindingIterator::HasNext() {
       // Replay to end
       size_t offset = size - 1 - i;
       for (size_t j = 0; j < i + 1; ++j) {
-        const std::vector<std::shared_ptr<OpPlanNode>>& child_binding =
+        const std::vector<std::shared_ptr<OpExpression>>& child_binding =
           children_bindings[offset + j];
-        std::shared_ptr<OpPlanNode> binding =
+        std::shared_ptr<OpExpression> binding =
           child_binding[children_bindings_pos[offset + j]];
         current_binding->PushChild(binding);
       }
@@ -241,7 +241,7 @@ bool ItemBindingIterator::HasNext() {
   return has_next;
 }
 
-std::shared_ptr<OpPlanNode> ItemBindingIterator::Next() {
+std::shared_ptr<OpExpression> ItemBindingIterator::Next() {
   return current_binding;
 }
 

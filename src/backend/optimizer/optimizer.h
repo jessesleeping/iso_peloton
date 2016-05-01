@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include "backend/optimizer/memo.h"
 #include "backend/optimizer/query_operators.h"
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/binding.h"
@@ -48,13 +49,30 @@ class Optimizer {
     std::shared_ptr<Select> select_tree);
 
  private:
+  /* OptimizerPlanToPlannerPlan - convert a tree of physical operators to
+   * a planner plan for execution.
+   *
+   * plan: an optimizer plan composed soley of physical operators
+   * return: the corresponding planner plan
+   */
+  planner::AbstractPlan *OptimizerPlanToPlannerPlan(OpExpression plan);
+
   /* TransformQueryTree - create an initial operator tree for the given query
    * to be used in performing optimization.
    *
    * tree: a peloton query tree representing a select query
-   * return: a logically equivalent operator tree that represents the query
+   * return: the group id of the root of the tree
    */
-  Operator TransformQueryTree(std::shared_ptr<Select> tree);
+  GroupID InsertQueryTree(std::shared_ptr<Select> tree);
+
+  /* GetQueryTreeRequiredProperties - get the required physical properties for
+   * a peloton query tree.
+   *
+   * tree: a peloton query tree representing a select query
+   * return: the set of required physical properties for the query
+   */
+  std::vector<Property> GetQueryTreeRequiredProperties(
+    std::shared_ptr<Select> tree);
 
   /* Optimize - produce the best plan for the given operator tree which has the
    * specified physical requirements
@@ -64,15 +82,15 @@ class Optimizer {
    *               must have
    * return: the best physical operator tree for the given group
    */
-  Operator OptimizeGroup(GroupID id,
-                         std::vector<Property> requirements);
+  OpExpression OptimizeGroup(GroupID id,
+                       std::vector<Property> requirements);
 
   /*
    *
    */
-  Operator OptimizeItem(GroupID id,
-                        size_t item_index,
-                        std::vector<Property> requirements);
+  OpExpression OptimizeItem(GroupID id,
+                      size_t item_index,
+                      std::vector<Property> requirements);
 
   /* Explore - check the operator tree root for the given pattern
    *
@@ -102,8 +120,7 @@ class Optimizer {
    */
   Operator TransformOperator(Operator root, const Rule &rule);
 
-  std::vector<Group> groups;
-
+  Memo memo;
   std::vector<Rule> rules;
 };
 

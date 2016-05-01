@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// logical_operators.h
+// operators.h
 //
-// Identification: src/backend/optimizer/logical_operators.h
+// Identification: src/backend/optimizer/operators.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -124,6 +124,61 @@ class LogicalLimit : public OperatorNode<LogicalLimit> {
 
   GroupID child;
   int limit;
+};
+
+//===--------------------------------------------------------------------===//
+// Scan
+//===--------------------------------------------------------------------===//
+class PhysicalScan : public OperatorNode<PhysicalScan> {
+ public:
+  static Operator make(oid_t base_table, std::vector<oid_t> columns);
+
+  oid_t base_table;
+  std::vector<oid_t> columns;
+};
+
+//===--------------------------------------------------------------------===//
+// InnerHashJoin
+//===--------------------------------------------------------------------===//
+class PhysicalInnerHashJoin : public OperatorNode<PhysicalInnerHashJoin> {
+ public:
+  static Operator make(GroupID outer, GroupID inner);
+
+  GroupID outer;
+  GroupID inner;
+};
+
+//===--------------------------------------------------------------------===//
+// LeftHashJoin
+//===--------------------------------------------------------------------===//
+class PhysicalLeftHashJoin : public OperatorNode<PhysicalLeftHashJoin> {
+ public:
+  static Operator make(GroupID outer, GroupID inner);
+
+  GroupID outer;
+  GroupID inner;
+};
+
+//===--------------------------------------------------------------------===//
+// RightHashJoin
+//===--------------------------------------------------------------------===//
+class PhysicalRightHashJoin : public OperatorNode<PhysicalRightHashJoin> {
+ public:
+  static Operator make(GroupID outer, GroupID inner);
+
+  GroupID outer;
+  GroupID inner;
+};
+
+//===--------------------------------------------------------------------===//
+// OuterHashJoin
+//===--------------------------------------------------------------------===//
+class PhysicalOuterHashJoin : public OperatorNode<PhysicalOuterHashJoin> {
+ public:
+  static Operator make(GroupID outer, GroupID inner);
+
+  GroupID outer;
+  GroupID inner;
 };
 
 } /* namespace optimizer */

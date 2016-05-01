@@ -15,7 +15,7 @@
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/group.h"
 #include "backend/optimizer/pattern.h"
-#include "backend/optimizer/op_plan_node.h"
+#include "backend/optimizer/op_expression.h"
 
 #include <map>
 #include <tuple>
@@ -37,7 +37,7 @@ class BindingIterator {
 
   virtual bool HasNext() = 0;
 
-  virtual std::shared_ptr<OpPlanNode> Next() = 0;
+  virtual std::shared_ptr<OpExpression> Next() = 0;
 
  protected:
   Optimizer &optimizer;
@@ -52,7 +52,7 @@ class GroupBindingIterator : public BindingIterator {
 
   bool HasNext() override;
 
-  std::shared_ptr<OpPlanNode> Next() override;
+  std::shared_ptr<OpExpression> Next() override;
 
  private:
   GroupID group_id;
@@ -74,7 +74,7 @@ class ItemBindingIterator : public BindingIterator {
 
   bool HasNext() override;
 
-  std::shared_ptr<OpPlanNode> Next() override;
+  std::shared_ptr<OpExpression> Next() override;
 
  private:
   GroupID group_id;
@@ -83,8 +83,8 @@ class ItemBindingIterator : public BindingIterator {
 
   bool first;
   bool has_next;
-  std::shared_ptr<OpPlanNode> current_binding;
-  std::vector<std::vector<std::shared_ptr<OpPlanNode>>> children_bindings;
+  std::shared_ptr<OpExpression> current_binding;
+  std::vector<std::vector<std::shared_ptr<OpExpression>>> children_bindings;
   std::vector<size_t> children_bindings_pos;
 };
 

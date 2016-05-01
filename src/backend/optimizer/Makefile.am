@@ -11,12 +11,13 @@ optimizer_FILES = \
 				backend/optimizer/operator_node.cpp \
 				backend/optimizer/query_operators.cpp \
 				backend/optimizer/query_node_printer.cpp \
-				backend/optimizer/logical_operators.cpp \
+				backend/optimizer/operators.cpp \
 				backend/optimizer/operator_visitor.cpp \
 				backend/optimizer/group.cpp \
+				backend/optimizer/memo.cpp \
 				backend/optimizer/pattern.cpp \
 				backend/optimizer/binding.cpp \
-				backend/optimizer/op_plan_node.cpp \
+				backend/optimizer/op_expression.cpp \
 				backend/optimizer/rule_impls.cpp
 
 
