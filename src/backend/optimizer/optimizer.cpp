@@ -77,13 +77,11 @@ std::vector<Property> Optimizer::GetQueryTreeRequiredProperties(
 }
 
 OpExpression Optimizer::OptimizeGroup(GroupID id,
-                                    std::vector<Property> requirements)
+                                      std::vector<Property> requirements)
 {
-  const std::vector<Operator> &items = memo.Groups()[id].GetOperators();
-  for (size_t item_index = 0; item_index < items.size(); ++item_index) {
-    OptimizeItem(id,
-                 item_index,
-                 requirements);
+  size_t num_expressions = memo.GetGroupByID(id)->GetExpressions().size();
+  for (size_t item_index = 0; item_index < num_expressions; ++item_index) {
+    OptimizeItem(id, item_index, requirements);
   }
 
   // Choose best from group
@@ -91,8 +89,8 @@ OpExpression Optimizer::OptimizeGroup(GroupID id,
 }
 
 OpExpression Optimizer::OptimizeItem(GroupID group_id,
-                                   size_t item_index,
-                                   std::vector<Property> requirements)
+                                     size_t item_index,
+                                     std::vector<Property> requirements)
 {
   // Apply all rules to operator which match. We apply all rules to one operator
   // before moving on to the next operator in the group because then we avoid

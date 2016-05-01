@@ -13,6 +13,7 @@
 #pragma once
 
 #include "backend/optimizer/memo.h"
+#include "backend/optimizer/column_manager.h"
 #include "backend/optimizer/query_operators.h"
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/binding.h"
@@ -121,6 +122,7 @@ class Optimizer {
   Operator TransformOperator(Operator root, const Rule &rule);
 
   Memo memo;
+  ColumnManager column_manager;
   std::vector<Rule> rules;
 };
 

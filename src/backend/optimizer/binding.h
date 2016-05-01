@@ -25,6 +25,7 @@ namespace peloton {
 namespace optimizer {
 
 class Optimizer;
+class Memo;
 
 //===--------------------------------------------------------------------===//
 // Binding Iterator
@@ -41,7 +42,7 @@ class BindingIterator {
 
  protected:
   Optimizer &optimizer;
-  std::vector<Group> &groups;
+  Memo &memo;
 };
 
 class GroupBindingIterator : public BindingIterator {
@@ -57,8 +58,8 @@ class GroupBindingIterator : public BindingIterator {
  private:
   GroupID group_id;
   std::shared_ptr<Pattern> pattern;
-  Group &target_group;
-  const std::vector<Operator> &target_group_items;
+  Group *target_group;
+  size_t num_group_items;
   const std::vector<bool> &target_group_explored;
 
   size_t current_item_index;

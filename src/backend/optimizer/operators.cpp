@@ -27,94 +27,93 @@ Operator LeafOperator::make(GroupID group) {
 //===--------------------------------------------------------------------===//
 // Get
 //===--------------------------------------------------------------------===//
-Operator LogicalGet::make(oid_t base_table, std::vector<oid_t> columns) {
+Operator LogicalGet::make(oid_t base_table, std::vector<Column *> columns) {
   LogicalGet *get = new LogicalGet;
   get->base_table = base_table;
   get->columns = columns;
   return Operator(get);
 }
 
+hash_t LogicalGet::Hash() const {
+  uint64_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, util::Hash<oid_t>(&base_table));
+  for (Column *col : columns) {
+    hash = util::CombineHashes(hash, col->Hash());
+  }
+  return hash;
+}
+
 //===--------------------------------------------------------------------===//
 // Project
 //===--------------------------------------------------------------------===//
-Operator LogicalProject::make(GroupID child) {
+Operator LogicalProject::make() {
   LogicalProject *project = new LogicalProject;
-  project->child = child;
   return Operator(project);
 }
 
 //===--------------------------------------------------------------------===//
 // Filter
 //===--------------------------------------------------------------------===//
-Operator LogicalFilter::make(GroupID child, QueryExpression *predicate) {
+Operator LogicalFilter::make() {
   LogicalFilter *filter = new LogicalFilter;
-  filter->child = child;
-  filter->predicate = predicate;
   return Operator(filter);
 }
 
 //===--------------------------------------------------------------------===//
 // InnerJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalInnerJoin::make(GroupID outer, GroupID inner) {
+Operator LogicalInnerJoin::make()
+{
   LogicalInnerJoin *join = new LogicalInnerJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 
 //===--------------------------------------------------------------------===//
 // LeftJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalLeftJoin::make(GroupID outer, GroupID inner) {
+Operator LogicalLeftJoin::make()
+{
   LogicalLeftJoin *join = new LogicalLeftJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 
 //===--------------------------------------------------------------------===//
 // RightJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalRightJoin::make(GroupID outer, GroupID inner) {
+Operator LogicalRightJoin::make()
+{
   LogicalRightJoin *join = new LogicalRightJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 
 //===--------------------------------------------------------------------===//
 // OuterJoin
 //===--------------------------------------------------------------------===//
-Operator LogicalOuterJoin::make(GroupID outer, GroupID inner) {
+Operator LogicalOuterJoin::make()
+{
   LogicalOuterJoin *join = new LogicalOuterJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 //===--------------------------------------------------------------------===//
 // Aggregate
 //===--------------------------------------------------------------------===//
-Operator LogicalAggregate::make(GroupID child) {
+Operator LogicalAggregate::make() {
   LogicalAggregate *agg = new LogicalAggregate;
-  agg->child = child;
   return Operator(agg);
 }
 
 //===--------------------------------------------------------------------===//
 // Limit
 //===--------------------------------------------------------------------===//
-Operator LogicalLimit::make(GroupID child, int limit) {
+Operator LogicalLimit::make() {
   LogicalLimit *limit_op = new LogicalLimit;
-  limit_op->child = child;
-  limit_op->limit = limit;;
   return Operator(limit_op);
 }
 
 //===--------------------------------------------------------------------===//
 // Scan
 //===--------------------------------------------------------------------===//
-Operator PhysicalScan::make(oid_t base_table, std::vector<oid_t> columns) {
+Operator PhysicalScan::make(oid_t base_table, std::vector<Column *> columns) {
   PhysicalScan *get = new PhysicalScan;
   get->base_table = base_table;
   get->columns = columns;
@@ -124,40 +123,36 @@ Operator PhysicalScan::make(oid_t base_table, std::vector<oid_t> columns) {
 //===--------------------------------------------------------------------===//
 // InnerHashJoin
 //===--------------------------------------------------------------------===//
-Operator PhysicalInnerHashJoin::make(GroupID outer, GroupID inner) {
+Operator PhysicalInnerHashJoin::make()
+{
   PhysicalInnerHashJoin *join = new PhysicalInnerHashJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 
 //===--------------------------------------------------------------------===//
 // LeftHashJoin
 //===--------------------------------------------------------------------===//
-Operator PhysicalLeftHashJoin::make(GroupID outer, GroupID inner) {
+Operator PhysicalLeftHashJoin::make()
+{
   PhysicalLeftHashJoin *join = new PhysicalLeftHashJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 
 //===--------------------------------------------------------------------===//
 // RightHashJoin
 //===--------------------------------------------------------------------===//
-Operator PhysicalRightHashJoin::make(GroupID outer, GroupID inner) {
+Operator PhysicalRightHashJoin::make()
+{
   PhysicalRightHashJoin *join = new PhysicalRightHashJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 
 //===--------------------------------------------------------------------===//
 // OuterHashJoin
 //===--------------------------------------------------------------------===//
-Operator PhysicalOuterHashJoin::make(GroupID outer, GroupID inner) {
+Operator PhysicalOuterHashJoin::make()
+{
   PhysicalOuterHashJoin *join = new PhysicalOuterHashJoin;
-  join->outer = outer;
-  join->inner = inner;
   return Operator(join);
 }
 

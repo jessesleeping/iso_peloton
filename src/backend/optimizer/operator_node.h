@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "backend/optimizer/util.h"
+
 #include <string>
 #include <memory>
 
@@ -39,6 +41,12 @@ enum class OpType {
   LeftHashJoin,
   RightHashJoin,
   OuterHashJoin,
+  // Exprs
+  Variable,
+  Constant,
+  Compare,
+  BoolOp,
+  Op,
 };
 
 //===--------------------------------------------------------------------===//
@@ -60,6 +68,11 @@ struct BaseOperatorNode {
   virtual bool is_logical() const = 0;
 
   virtual bool is_physical() const = 0;
+
+  virtual hash_t Hash() const {
+    OpType t = type();
+    return util::Hash(&t);
+  }
 };
 
 // Curiously recurring template pattern
@@ -96,6 +109,8 @@ public:
 
   bool is_physical() const;
 
+  hash_t Hash() const;
+
   bool defined() const;
 
   template <typename T> const T *as() const {
@@ -111,3 +126,15 @@ private:
 
 } /* namespace optimizer */
 } /* namespace peloton */
+
+namespace std {
+
+template<> struct hash<peloton::optimizer::BaseOperatorNode> {
+  typedef peloton::optimizer::BaseOperatorNode argument_type;
+  typedef std::size_t result_type;
+  result_type operator()(argument_type const& s) const {
+    return s.Hash();
+  }
+};
+
+} /* namespace std */

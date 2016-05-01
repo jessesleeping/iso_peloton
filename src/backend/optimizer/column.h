@@ -2,9 +2,9 @@
 //
 //                         Peloton
 //
-// op_expression.h
+// column.h
 //
-// Identification: src/backend/optimizer/op_expression.h
+// Identification: src/backend/optimizer/column.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
@@ -13,36 +13,32 @@
 #pragma once
 
 #include "backend/optimizer/operator_node.h"
+#include "backend/optimizer/query_operators.h"
 #include "backend/optimizer/group.h"
+#include "backend/optimizer/util.h"
 
-#include <vector>
-#include <memory>
+#include "backend/common/types.h"
 
 namespace peloton {
 namespace optimizer {
 
+using ColumnID = int32_t;
+
 //===--------------------------------------------------------------------===//
-// Operator Expr
+// Column
 //===--------------------------------------------------------------------===//
-class OpExpressionVisitor;
+class Column {
+ public:
+  Column(ColumnID id, peloton::ExpressionType type, std::string name);
 
-class OpExpression {
-public:
-  OpExpression(Operator op);
+  hash_t Hash() const;
 
-  void PushChild(std::shared_ptr<OpExpression> op);
+ private:
+  ColumnID id;
 
-  void PopChild();
+  peloton::ExpressionType type;
 
-  const std::vector<std::shared_ptr<OpExpression>> &Children() const;
-
-  void Accept(OpExpressionVisitor *v) const;
-
-  const Operator &Op() const;
-
-private:
-  Operator op;
-  std::vector<std::shared_ptr<OpExpression>> children;
+  std::string name;
 };
 
 } /* namespace optimizer */

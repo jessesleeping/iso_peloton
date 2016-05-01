@@ -36,11 +36,15 @@ void InnerJoinCommutativity::Transform(
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
   const LogicalInnerJoin *inner_join = input->Op().as<LogicalInnerJoin>();
-  assert(inner_join != nullptr);
-  GroupID left = inner_join->outer;
-  GroupID right = inner_join->inner;
-  auto result_plan =
-    std::make_shared<OpExpression>(LogicalInnerJoin::make(right, left));
+  (void)inner_join;
+
+  auto result_plan = std::make_shared<OpExpression>(LogicalInnerJoin::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 3);
+  result_plan->PushChild(children[1]);
+  result_plan->PushChild(children[0]);
+  result_plan->PushChild(children[2]);
+
   transformed.push_back(result_plan);
 }
 

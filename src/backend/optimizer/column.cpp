@@ -2,40 +2,29 @@
 //
 //                         Peloton
 //
-// group.cpp
+// column.cpp
 //
-// Identification: src/backend/optimizer/group.cpp
+// Identification: src/backend/optimizer/column.cpp
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#include "backend/optimizer/group.h"
+#include "backend/optimizer/column.h"
 
 namespace peloton {
 namespace optimizer {
 
 //===--------------------------------------------------------------------===//
-// Group
+// Column
 //===--------------------------------------------------------------------===//
-Group::Group() {}
-
-void Group::AddExpression(std::shared_ptr<GroupExpression> expr) {
-  // Do duplicate detection
-  expressions.push_back(expr);
+Column::Column(ColumnID id, peloton::ExpressionType type, std::string name)
+  : id(id), type(type), name(name)
+{
 }
 
-void Group::set_explored(size_t item_index) {
-  explored_flags[item_index] = true;
-}
-
-const std::vector<std::shared_ptr<GroupExpression>>
-&Group::GetExpressions() const {
-  return expressions;
-}
-
-const std::vector<bool> &Group::GetExploredFlags() const {
-  return explored_flags;
+hash_t Column::Hash() const {
+  return util::Hash<ColumnID>(&id);
 }
 
 } /* namespace optimizer */

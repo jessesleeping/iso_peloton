@@ -15,6 +15,8 @@
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/query_operators.h"
 #include "backend/optimizer/group.h"
+#include "backend/optimizer/column.h"
+#include "backend/optimizer/util.h"
 
 namespace peloton {
 namespace optimizer {
@@ -34,10 +36,12 @@ class LeafOperator : OperatorNode<LeafOperator> {
 //===--------------------------------------------------------------------===//
 class LogicalGet : public OperatorNode<LogicalGet> {
  public:
-  static Operator make(oid_t base_table, std::vector<oid_t> columns);
+  static Operator make(oid_t base_table, std::vector<Column *> cols);
+
+  hash_t Hash() const override;
 
   oid_t base_table;
-  std::vector<oid_t> columns;
+  std::vector<Column *> columns;
 };
 
 //===--------------------------------------------------------------------===//
@@ -45,9 +49,7 @@ class LogicalGet : public OperatorNode<LogicalGet> {
 //===--------------------------------------------------------------------===//
 class LogicalProject : public OperatorNode<LogicalProject> {
  public:
-  static Operator make(GroupID child);
-
-  GroupID child;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -55,10 +57,7 @@ class LogicalProject : public OperatorNode<LogicalProject> {
 //===--------------------------------------------------------------------===//
 class LogicalFilter : public OperatorNode<LogicalFilter> {
  public:
-  static Operator make(GroupID child, QueryExpression *predicate);
-
-  GroupID child;
-  QueryExpression *predicate;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -66,10 +65,7 @@ class LogicalFilter : public OperatorNode<LogicalFilter> {
 //===--------------------------------------------------------------------===//
 class LogicalInnerJoin : public OperatorNode<LogicalInnerJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -77,10 +73,7 @@ class LogicalInnerJoin : public OperatorNode<LogicalInnerJoin> {
 //===--------------------------------------------------------------------===//
 class LogicalLeftJoin : public OperatorNode<LogicalLeftJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -88,10 +81,7 @@ class LogicalLeftJoin : public OperatorNode<LogicalLeftJoin> {
 //===--------------------------------------------------------------------===//
 class LogicalRightJoin : public OperatorNode<LogicalRightJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -99,10 +89,7 @@ class LogicalRightJoin : public OperatorNode<LogicalRightJoin> {
 //===--------------------------------------------------------------------===//
 class LogicalOuterJoin : public OperatorNode<LogicalOuterJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -110,9 +97,7 @@ class LogicalOuterJoin : public OperatorNode<LogicalOuterJoin> {
 //===--------------------------------------------------------------------===//
 class LogicalAggregate : public OperatorNode<LogicalAggregate> {
  public:
-  static Operator make(GroupID child);
-
-  GroupID child;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -120,10 +105,7 @@ class LogicalAggregate : public OperatorNode<LogicalAggregate> {
 //===--------------------------------------------------------------------===//
 class LogicalLimit : public OperatorNode<LogicalLimit> {
  public:
-  static Operator make(GroupID child, int limit);
-
-  GroupID child;
-  int limit;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -131,10 +113,10 @@ class LogicalLimit : public OperatorNode<LogicalLimit> {
 //===--------------------------------------------------------------------===//
 class PhysicalScan : public OperatorNode<PhysicalScan> {
  public:
-  static Operator make(oid_t base_table, std::vector<oid_t> columns);
+  static Operator make(oid_t base_table, std::vector<Column *> columns);
 
   oid_t base_table;
-  std::vector<oid_t> columns;
+  std::vector<Column *> columns;
 };
 
 //===--------------------------------------------------------------------===//
@@ -142,10 +124,7 @@ class PhysicalScan : public OperatorNode<PhysicalScan> {
 //===--------------------------------------------------------------------===//
 class PhysicalInnerHashJoin : public OperatorNode<PhysicalInnerHashJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -153,10 +132,7 @@ class PhysicalInnerHashJoin : public OperatorNode<PhysicalInnerHashJoin> {
 //===--------------------------------------------------------------------===//
 class PhysicalLeftHashJoin : public OperatorNode<PhysicalLeftHashJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -164,10 +140,7 @@ class PhysicalLeftHashJoin : public OperatorNode<PhysicalLeftHashJoin> {
 //===--------------------------------------------------------------------===//
 class PhysicalRightHashJoin : public OperatorNode<PhysicalRightHashJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
-
-  GroupID outer;
-  GroupID inner;
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -175,10 +148,57 @@ class PhysicalRightHashJoin : public OperatorNode<PhysicalRightHashJoin> {
 //===--------------------------------------------------------------------===//
 class PhysicalOuterHashJoin : public OperatorNode<PhysicalOuterHashJoin> {
  public:
-  static Operator make(GroupID outer, GroupID inner);
+  static Operator make();
+};
 
-  GroupID outer;
-  GroupID inner;
+//===--------------------------------------------------------------------===//
+// Variable
+//===--------------------------------------------------------------------===//
+class ExprVariable : public OperatorNode<ExprVariable> {
+ public:
+  static Operator make(Column *column);
+
+  Column *column;
+};
+
+//===--------------------------------------------------------------------===//
+// Constant
+//===--------------------------------------------------------------------===//
+class ExprConstant : public OperatorNode<ExprConstant> {
+ public:
+  static Operator make(Value value);
+
+  Value value;
+};
+
+//===--------------------------------------------------------------------===//
+// Compare
+//===--------------------------------------------------------------------===//
+class ExprCompare : public OperatorNode<ExprCompare> {
+ public:
+  static Operator make(peloton::ExpressionType type);
+
+  peloton::ExpressionType type;
+};
+
+//===--------------------------------------------------------------------===//
+// Boolean Operation
+//===--------------------------------------------------------------------===//
+class ExprBoolOp : public OperatorNode<ExprBoolOp> {
+ public:
+  static Operator make();
+
+  Column *column;
+};
+
+//===--------------------------------------------------------------------===//
+// Operation (e.g. +, -, string functions)
+//===--------------------------------------------------------------------===//
+class ExprOp : public OperatorNode<ExprOp> {
+ public:
+  static Operator make(Column *column);
+
+  Column *column;
 };
 
 } /* namespace optimizer */

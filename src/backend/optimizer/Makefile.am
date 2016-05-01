@@ -14,11 +14,15 @@ optimizer_FILES = \
 				backend/optimizer/operators.cpp \
 				backend/optimizer/operator_visitor.cpp \
 				backend/optimizer/group.cpp \
+				backend/optimizer/group_expression.cpp \
 				backend/optimizer/memo.cpp \
 				backend/optimizer/pattern.cpp \
 				backend/optimizer/binding.cpp \
 				backend/optimizer/op_expression.cpp \
-				backend/optimizer/rule_impls.cpp
+				backend/optimizer/rule_impls.cpp \
+				backend/optimizer/column.cpp \
+				backend/optimizer/column_manager.cpp \
+				backend/optimizer/util.cpp
 
 
 optimizer_INCLUDES = \

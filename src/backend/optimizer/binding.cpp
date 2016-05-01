@@ -19,66 +19,11 @@
 namespace peloton {
 namespace optimizer {
 
-namespace {
-
-class ChildVisitor : public OperatorVisitor {
- public:
-  std::vector<GroupID> GetChildren(Operator op) {
-    op.accept(this);
-    return children;
-  }
-
- private:
-  void visit(const LogicalGet* op) {
-    (void)op;
-  }
-
-  void visit(const LogicalProject* op) {
-    children.push_back(op->child);
-  }
-
-  void visit(const LogicalFilter* op) {
-    children.push_back(op->child);
-  }
-
-  void visit(const LogicalInnerJoin* op) {
-    children.push_back(op->outer);
-    children.push_back(op->inner);
-  }
-
-  void visit(const LogicalLeftJoin* op) {
-    children.push_back(op->outer);
-    children.push_back(op->inner);
-  }
-
-  void visit(const LogicalRightJoin* op) {
-    children.push_back(op->outer);
-    children.push_back(op->inner);
-  }
-
-  void visit(const LogicalOuterJoin* op) {
-    children.push_back(op->outer);
-    children.push_back(op->inner);
-  }
-
-  void visit(const LogicalAggregate* op) {
-    children.push_back(op->child);
-  }
-
-  void visit(const LogicalLimit* op) {
-    children.push_back(op->child);
-  }
-
-  std::vector<GroupID> children;
-};
-
-}
-
 //===--------------------------------------------------------------------===//
 // Base Binding Iterator
 //===--------------------------------------------------------------------===//
 BindingIterator::BindingIterator(Optimizer &optimizer)
-  : optimizer(optimizer), groups(optimizer.memo.Groups())
+  : optimizer(optimizer), memo(optimizer.memo)
 {
 }
 
@@ -91,18 +36,18 @@ GroupBindingIterator::GroupBindingIterator(Optimizer &optimizer,
   : BindingIterator(optimizer),
     group_id(id),
     pattern(pattern),
-    target_group(groups[id]),
-    target_group_items(target_group.GetOperators()),
-    target_group_explored(target_group.GetExploredFlags()),
+    target_group(memo.GetGroupByID(id)),
+    num_group_items(target_group->GetExpressions().size()),
+    target_group_explored(target_group->GetExploredFlags()),
     current_item_index(0)
 {
   // We'd like to only explore rules which we know will produce a match of our
   // current pattern. However, because our rules don't currently expose the
   // structure of the output they produce after a transformation, we must be
   // conservative and apply all rules
-  for (size_t i = 0; i < target_group_items.size(); ++i) {
+  for (size_t i = 0; i < num_group_items; ++i) {
     if (!target_group_explored[i]) {
-      target_group.set_explored(i);
+      target_group->set_explored(i);
       for (const Rule &rule : optimizer.rules) {
         optimizer.ExploreItem(group_id, i, rule);
       }
@@ -125,7 +70,7 @@ bool GroupBindingIterator::HasNext() {
 
   if (current_iterator == nullptr) {
     // Keep checking item iterators until we find a match
-    while (current_item_index < target_group_items.size()) {
+    while (current_item_index < num_group_items) {
       current_iterator.reset(
         new ItemBindingIterator(optimizer,
                                 group_id,
@@ -146,7 +91,7 @@ bool GroupBindingIterator::HasNext() {
 
 std::shared_ptr<OpExpression> GroupBindingIterator::Next() {
   if (pattern->Type() == OpType::Leaf) {
-    current_item_index = target_group_items.size();
+    current_item_index = num_group_items;
     return std::make_shared<OpExpression>(LeafOperator::make(group_id));
   }
   return current_iterator->Next();
@@ -165,12 +110,15 @@ ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
     pattern(pattern),
     first(true),
     has_next(false),
-    current_binding(std::make_shared<OpExpression>(groups, id, item_index))
+    current_binding(
+      std::make_shared<OpExpression>(
+        memo.GetGroupByID(id)->GetExpressions()[item_index]->Op()))
 {
-  Operator item = groups[id].GetOperators()[item_index];
-  if (item.type() != pattern->Type()) return;
+  const std::shared_ptr<GroupExpression> item =
+    memo.GetGroupByID(id)->GetExpressions()[item_index];
+  if (item->Op().type() != pattern->Type()) return;
 
-  std::vector<GroupID> child_groups = ChildVisitor().GetChildren(item);
+  const std::vector<GroupID> &child_groups = item->ChildGroupIDs();
   const std::vector<std::shared_ptr<Pattern>> &child_patterns =
     pattern->Children();
 

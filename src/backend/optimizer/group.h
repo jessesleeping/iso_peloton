@@ -14,6 +14,7 @@
 
 #include "backend/optimizer/operator_node.h"
 #include "backend/optimizer/property.h"
+#include "backend/optimizer/group_expression.h"
 
 #include <vector>
 #include <map>
@@ -32,16 +33,16 @@ class Group {
  public:
   Group();
 
-  void add_item(Operator op);
+  void AddExpression(std::shared_ptr<GroupExpression> expr);
 
   void set_explored(size_t item_index);
 
-  const std::vector<Operator> &GetOperators() const;
+  const std::vector<std::shared_ptr<GroupExpression>> &GetExpressions() const;
 
   const std::vector<bool> &GetExploredFlags() const;
 
  private:
-  std::vector<Operator> items;
+  std::vector<std::shared_ptr<GroupExpression>> expressions;
   std::vector<bool> explored_flags;
   std::map<std::vector<Property>, size_t> lowest_cost_items;
 };

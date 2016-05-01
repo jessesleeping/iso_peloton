@@ -15,6 +15,7 @@
 #include "backend/optimizer/group.h"
 #include "backend/optimizer/op_expression.h"
 
+#include <unordered_set>
 #include <vector>
 #include <map>
 
@@ -28,11 +29,14 @@ class Memo {
  public:
   Memo();
 
-  void InsertExpression(std::shared_ptr<OpExpression> expr);
+  GroupID InsertExpression(std::shared_ptr<GroupExpression> expr);
 
-  std::vector<Group> &Groups();
+  const std::vector<Group> &Groups() const;
+
+  Group *GetGroupByID(GroupID id);
 
  private:
+  std::unordered_set<GroupExpression *> group_expressions;
   std::vector<Group> groups;
   std::map<std::vector<Property>, size_t> lowest_cost_items;
 };

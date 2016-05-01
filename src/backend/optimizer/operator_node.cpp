@@ -54,6 +54,13 @@ bool Operator::is_physical() const {
   return false;
 }
 
+hash_t Operator::Hash() const {
+  if (defined()) {
+    return node->Hash();
+  }
+  return 0;
+}
+
 bool Operator::defined() const {
   return node != nullptr;
 }

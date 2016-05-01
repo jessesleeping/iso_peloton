@@ -20,17 +20,21 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 Memo::Memo() {}
 
-
-void Memo::InsertExpression(std::shared_ptr<OpExpression> expr) {
-  // Recursively insert
-
-  // 
+GroupID Memo::InsertExpression(std::shared_ptr<GroupExpression> expr) {
+  // Lookup in hash table
   (void)expr;
+
+  return 0;
 }
 
-std::vector<Group> &Memo::Groups() {
+const std::vector<Group> &Memo::Groups() const {
   return groups;
 }
+
+Group *Memo::GetGroupByID(GroupID id) {
+  return &(groups[id]);
+}
+
 
 } /* namespace optimizer */
 } /* namespace peloton */

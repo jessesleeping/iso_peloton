@@ -20,15 +20,8 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 // Operator Expression
 //===--------------------------------------------------------------------===//
-OpExpression::OpExpression(std::vector<Group> &groups,
-               GroupID id,
-               size_t item_index)
-  : id(id), item_index(item_index), op(groups[id].GetOperators()[item_index])
-{
-}
-
 OpExpression::OpExpression(Operator op)
-  : id(UNDEFINED_GROUP), item_index(0), op(op)
+  : op(op)
 {
 }
 
@@ -40,20 +33,13 @@ void OpExpression::PopChild() {
   children.pop_back();
 }
 
-const std::vector<std::shared_ptr<OpExpression>> &OpExpression::Children() const {
+const std::vector<std::shared_ptr<OpExpression>>
+&OpExpression::Children() const {
   return children;
 }
 
 void OpExpression::Accept(OpExpressionVisitor *v) const {
   (void)v;
-}
-
-GroupID OpExpression::ID() const {
-  return id;
-}
-
-size_t OpExpression::ItemIndex() const {
-  return item_index;
 }
 
 const Operator &OpExpression::Op() const {
