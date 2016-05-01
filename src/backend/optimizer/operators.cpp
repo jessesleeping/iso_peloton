@@ -156,6 +156,48 @@ Operator PhysicalOuterHashJoin::make()
   return Operator(join);
 }
 
+//===--------------------------------------------------------------------===//
+// Variable
+//===--------------------------------------------------------------------===//
+Operator ExprVariable::make(Column *column) {
+  ExprVariable *var = new ExprVariable;
+  var->column = column;
+  return Operator(var);
+}
+
+//===--------------------------------------------------------------------===//
+// Constant
+//===--------------------------------------------------------------------===//
+Operator ExprConstant::make(Value value) {
+  ExprConstant *constant = new ExprConstant;
+  constant->value = value;
+  return Operator(constant);
+}
+
+//===--------------------------------------------------------------------===//
+// Compare
+//===--------------------------------------------------------------------===//
+Operator ExprCompare::make(ExpressionType type) {
+  ExprCompare *cmp = new ExprCompare;
+  cmp->type = type;
+  return Operator(cmp);
+}
+
+//===--------------------------------------------------------------------===//
+// Boolean Operation
+//===--------------------------------------------------------------------===//
+Operator ExprBoolOp::make() {
+  ExprBoolOp *bool_op = new ExprBoolOp;
+  return Operator(bool_op);
+}
+
+//===--------------------------------------------------------------------===//
+// Operation (e.g. +, -, string functions)
+//===--------------------------------------------------------------------===//
+Operator ExprOp::make() {
+  ExprOp *op = new ExprOp;
+  return Operator(op);
+}
 
 template<>
 void OperatorNode<LeafOperator>::accept(OperatorVisitor *v) const {
@@ -217,6 +259,26 @@ template<>
 void OperatorNode<PhysicalOuterHashJoin>::accept(OperatorVisitor *v) const {
   v->visit((const PhysicalOuterHashJoin *)this);
 }
+template<>
+void OperatorNode<ExprVariable>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprVariable *)this);
+}
+template<>
+void OperatorNode<ExprConstant>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprConstant *)this);
+}
+template<>
+void OperatorNode<ExprCompare>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprCompare *)this);
+}
+template<>
+void OperatorNode<ExprBoolOp>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprBoolOp *)this);
+}
+template<>
+void OperatorNode<ExprOp>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprOp *)this);
+}
 
 template<>
 std::string OperatorNode<LeafOperator>::_name = "LeafOperator";
@@ -248,6 +310,16 @@ template<>
 std::string OperatorNode<PhysicalRightHashJoin>::_name = "PhysicalRightHashJoin";
 template<>
 std::string OperatorNode<PhysicalOuterHashJoin>::_name = "PhysicalOuterHashJoin";
+template<>
+std::string OperatorNode<ExprVariable>::_name = "ExprVariable";
+template<>
+std::string OperatorNode<ExprConstant>::_name = "ExprConstant";
+template<>
+std::string OperatorNode<ExprCompare>::_name = "ExprCompare";
+template<>
+std::string OperatorNode<ExprBoolOp>::_name = "ExprBoolOp";
+template<>
+std::string OperatorNode<ExprOp>::_name = "ExprOp";
 
 template<>
 OpType OperatorNode<LeafOperator>::_type = OpType::Leaf;
@@ -279,6 +351,16 @@ template<>
 OpType OperatorNode<PhysicalRightHashJoin>::_type = OpType::RightHashJoin;
 template<>
 OpType OperatorNode<PhysicalOuterHashJoin>::_type = OpType::OuterHashJoin;
+template<>
+OpType OperatorNode<ExprVariable>::_type = OpType::Variable;
+template<>
+OpType OperatorNode<ExprConstant>::_type = OpType::Constant;
+template<>
+OpType OperatorNode<ExprCompare>::_type = OpType::Compare;
+template<>
+OpType OperatorNode<ExprBoolOp>::_type = OpType::BoolOp;
+template<>
+OpType OperatorNode<ExprOp>::_type = OpType::Op;
 
 template<>
 bool OperatorNode<LeafOperator>::is_logical() const {
@@ -340,6 +422,26 @@ template<>
 bool OperatorNode<PhysicalOuterHashJoin>::is_logical() const {
   return false;
 }
+template<>
+bool OperatorNode<ExprVariable>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprConstant>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprCompare>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprBoolOp>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprOp>::is_logical() const {
+  return true;
+}
 
 template<>
 bool OperatorNode<LeafOperator>::is_physical() const {
@@ -399,6 +501,26 @@ bool OperatorNode<PhysicalRightHashJoin>::is_physical() const {
 }
 template<>
 bool OperatorNode<PhysicalOuterHashJoin>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprVariable>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprConstant>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprCompare>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprBoolOp>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprOp>::is_physical() const {
   return true;
 }
 

@@ -64,5 +64,20 @@ void OperatorVisitor::visit(const PhysicalRightHashJoin*) {
 void OperatorVisitor::visit(const PhysicalOuterHashJoin*) {
 }
 
+void OperatorVisitor::visit(const ExprVariable*) {
+}
+
+void OperatorVisitor::visit(const ExprConstant*) {
+}
+
+void OperatorVisitor::visit(const ExprCompare*) {
+}
+
+void OperatorVisitor::visit(const ExprBoolOp*) {
+}
+
+void OperatorVisitor::visit(const ExprOp*) {
+}
+
 } /* namespace optimizer */
 } /* namespace peloton */

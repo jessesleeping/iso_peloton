@@ -32,38 +32,15 @@ using namespace optimizer;
 class RuleTests : public PelotonTest {};
 
 TEST_F(RuleTests, SimpleRuleApplyTest) {
-  Optimizer optimizer;
-
-  // Make groups to apply rule against
-  std::vector<Group> &groups = optimizer.memo.Groups();
-
-  GroupID right_id;
-  GroupID left_id;
-  GroupID join_id;
-  {
-    Group right_group;
-    right_group.add_item(LogicalGet::make(0, {0, 1}));
-    groups.push_back(right_group);
-    right_id = groups.size() - 1;
-
-    Group left_group;
-    left_group.add_item(LogicalGet::make(1, {0}));
-    groups.push_back(left_group);
-    left_id = groups.size() - 1;
-
-    Group join_group;
-    join_group.add_item(LogicalInnerJoin::make(left_id, right_id));
-    groups.push_back(join_group);
-    join_id = groups.size() - 1;
-  }
-
   // Build op plan node to match rule
-  auto left_get = std::make_shared<OpExpression>(groups, left_id, 0);
-  auto right_get = std::make_shared<OpExpression>(groups, right_id, 0);
-
-  auto join = std::make_shared<OpExpression>(groups, join_id, 0);
+  auto left_get = std::make_shared<OpExpression>(LogicalGet::make(0, {}));
+  auto right_get = std::make_shared<OpExpression>(LogicalGet::make(1, {}));
+  auto pred =
+    std::make_shared<OpExpression>(ExprConstant::make(Value::GetTrue()));
+  auto join = std::make_shared<OpExpression>(LogicalInnerJoin::make());
   join->PushChild(left_get);
   join->PushChild(right_get);
+  join->PushChild(pred);
 
   // Setup rule
   InnerJoinCommutativity rule;

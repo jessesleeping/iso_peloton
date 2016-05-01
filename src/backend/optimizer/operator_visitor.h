@@ -40,6 +40,11 @@ class OperatorVisitor {
   virtual void visit(const PhysicalLeftHashJoin*);
   virtual void visit(const PhysicalRightHashJoin*);
   virtual void visit(const PhysicalOuterHashJoin*);
+  virtual void visit(const ExprVariable*);
+  virtual void visit(const ExprConstant*);
+  virtual void visit(const ExprCompare*);
+  virtual void visit(const ExprBoolOp*);
+  virtual void visit(const ExprOp*);
 };
 
 } /* namespace optimizer */

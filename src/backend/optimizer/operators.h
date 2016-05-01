@@ -176,9 +176,9 @@ class ExprConstant : public OperatorNode<ExprConstant> {
 //===--------------------------------------------------------------------===//
 class ExprCompare : public OperatorNode<ExprCompare> {
  public:
-  static Operator make(peloton::ExpressionType type);
+  static Operator make(ExpressionType type);
 
-  peloton::ExpressionType type;
+  ExpressionType type;
 };
 
 //===--------------------------------------------------------------------===//
@@ -187,8 +187,6 @@ class ExprCompare : public OperatorNode<ExprCompare> {
 class ExprBoolOp : public OperatorNode<ExprBoolOp> {
  public:
   static Operator make();
-
-  Column *column;
 };
 
 //===--------------------------------------------------------------------===//
@@ -196,9 +194,7 @@ class ExprBoolOp : public OperatorNode<ExprBoolOp> {
 //===--------------------------------------------------------------------===//
 class ExprOp : public OperatorNode<ExprOp> {
  public:
-  static Operator make(Column *column);
-
-  Column *column;
+  static Operator make();
 };
 
 } /* namespace optimizer */
