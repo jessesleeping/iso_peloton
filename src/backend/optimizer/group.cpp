@@ -18,10 +18,11 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 // Group
 //===--------------------------------------------------------------------===//
-Group::Group() {}
+Group::Group(GroupID id) : id(id) {}
 
 void Group::AddExpression(std::shared_ptr<GroupExpression> expr) {
   // Do duplicate detection
+  expr->SetGroupID(id);
   expressions.push_back(expr);
 }
 

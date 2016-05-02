@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "backend/optimizer/group_expression.h"
+#include "backend/optimizer/group.h"
 
 namespace peloton {
 namespace optimizer {
@@ -18,9 +19,8 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 // Group Expression
 //===--------------------------------------------------------------------===//
-GroupExpression::GroupExpression(Operator op,
-                                 std::vector<GroupID> child_groups)
-  : op(op), child_groups(child_groups)
+GroupExpression::GroupExpression(Operator op, std::vector<GroupID> child_groups)
+  : group_id(UNDEFINED_GROUP), op(op), child_groups(child_groups)
 {
 }
 

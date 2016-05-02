@@ -83,15 +83,14 @@ class Optimizer {
    *               must have
    * return: the best physical operator tree for the given group
    */
-  OpExpression OptimizeGroup(GroupID id,
-                       std::vector<Property> requirements);
+  void OptimizeGroup(GroupID id, std::vector<Property> requirements);
 
   /*
    *
    */
-  OpExpression OptimizeItem(GroupID id,
-                      size_t item_index,
-                      std::vector<Property> requirements);
+  void OptimizeItem(GroupID id,
+                    size_t item_index,
+                    std::vector<Property> requirements);
 
   /* Explore - check the operator tree root for the given pattern
    *
@@ -110,6 +109,19 @@ class Optimizer {
   void ExploreItem(GroupID id,
                    size_t item_index,
                    const Rule &rule);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Memo insertion
+  std::shared_ptr<GroupExpression> MakeGroupExpression(
+    std::shared_ptr<OpExpression> expr);
+
+  std::vector<GroupID> MemoTransformedChildren(
+    std::shared_ptr<OpExpression> expr);
+
+  GroupID MemoTransformedExpression(std::shared_ptr<OpExpression> expr);
+
+  bool RecordTransformedExpression(std::shared_ptr<OpExpression> expr,
+                                   std::shared_ptr<GroupExpression> &gexpr);
 
   /* TransformOperator - apply the given rule to the operator tree root to
    * generate a logically equivalent operator tree or a physical implementation

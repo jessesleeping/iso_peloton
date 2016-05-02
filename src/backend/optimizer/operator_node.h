@@ -69,6 +69,10 @@ struct BaseOperatorNode {
 
   virtual bool is_physical() const = 0;
 
+  virtual bool operator==(const BaseOperatorNode &r) {
+    return type() == r.type();
+  }
+
   virtual hash_t Hash() const {
     OpType t = type();
     return util::Hash(&t);

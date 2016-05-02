@@ -29,13 +29,25 @@ class Memo {
  public:
   Memo();
 
-  GroupID InsertExpression(std::shared_ptr<GroupExpression> expr);
+  /* InsertExpression - adds a group expression into the proper group in the
+   * memo, checking for duplicates
+   *
+   * expr: the new expression to add
+   * target_group: an optional target group to insert expression into
+   * return: true if expression is not a duplicate of an existing expression
+   */
+  bool InsertExpression(std::shared_ptr<GroupExpression> gexpr);
+
+  bool InsertExpression(std::shared_ptr<GroupExpression> gexpr,
+                        GroupID target_group);
 
   const std::vector<Group> &Groups() const;
 
   Group *GetGroupByID(GroupID id);
 
  private:
+  GroupID AddNewGroup();
+
   std::unordered_set<GroupExpression *> group_expressions;
   std::vector<Group> groups;
   std::map<std::vector<Property>, size_t> lowest_cost_items;

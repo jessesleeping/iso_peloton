@@ -28,8 +28,7 @@ using GroupID = int32_t;
 //===--------------------------------------------------------------------===//
 class GroupExpression {
  public:
-  GroupExpression(Operator op,
-                  std::vector<GroupID> child_groups);
+  GroupExpression(Operator op, std::vector<GroupID> child_groups);
 
   GroupID GetGroupID() const;
 

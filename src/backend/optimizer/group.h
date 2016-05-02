@@ -31,7 +31,7 @@ const GroupID UNDEFINED_GROUP = -1;
 //===--------------------------------------------------------------------===//
 class Group {
  public:
-  Group();
+  Group(GroupID id);
 
   void AddExpression(std::shared_ptr<GroupExpression> expr);
 
@@ -42,6 +42,7 @@ class Group {
   const std::vector<bool> &GetExploredFlags() const;
 
  private:
+  GroupID id;
   std::vector<std::shared_ptr<GroupExpression>> expressions;
   std::vector<bool> explored_flags;
   std::map<std::vector<Property>, size_t> lowest_cost_items;

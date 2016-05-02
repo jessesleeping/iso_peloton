@@ -49,7 +49,8 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
     GetQueryTreeRequiredProperties(select_tree);
 
   // Find least cost plan for root group
-  OpExpression optimizer_plan = OptimizeGroup(root_id, properties);
+  OptimizeGroup(root_id, properties);
+  OpExpression optimizer_plan(LogicalInnerJoin::make());
 
   planner::AbstractPlan* top_plan = OptimizerPlanToPlannerPlan(optimizer_plan);
 
@@ -76,21 +77,18 @@ std::vector<Property> Optimizer::GetQueryTreeRequiredProperties(
   return {};
 }
 
-OpExpression Optimizer::OptimizeGroup(GroupID id,
-                                      std::vector<Property> requirements)
-{
+void Optimizer::OptimizeGroup(GroupID id, std::vector<Property> requirements) {
   size_t num_expressions = memo.GetGroupByID(id)->GetExpressions().size();
   for (size_t item_index = 0; item_index < num_expressions; ++item_index) {
     OptimizeItem(id, item_index, requirements);
   }
 
   // Choose best from group
-  return Operator();
 }
 
-OpExpression Optimizer::OptimizeItem(GroupID group_id,
-                                     size_t item_index,
-                                     std::vector<Property> requirements)
+void Optimizer::OptimizeItem(GroupID group_id,
+                             size_t item_index,
+                             std::vector<Property> requirements)
 {
   // Apply all rules to operator which match. We apply all rules to one operator
   // before moving on to the next operator in the group because then we avoid
@@ -101,7 +99,6 @@ OpExpression Optimizer::OptimizeItem(GroupID group_id,
     ExploreItem(group_id, item_index, rule);
   }
   (void)requirements;
-  return Operator();
 }
 
 void Optimizer::ExploreGroup(GroupID id, const Rule &rule) {
@@ -130,9 +127,52 @@ void Optimizer::ExploreItem(GroupID id,
       std::vector<std::shared_ptr<OpExpression>> output_plans;
       rule.Transform(plan, output_plans);
 
-      // Integrate transformed plans back into groups and explore/cost
+      // Integrate transformed plans back into groups and explore/cost if new
+      for (std::shared_ptr<OpExpression> plan : output_plans) {
+        std::shared_ptr<GroupExpression> gexpr;
+        bool new_expression = RecordTransformedExpression(plan, gexpr);
+        if (new_expression) {
+        }
+      }
     }
   }
+}
+
+
+std::shared_ptr<GroupExpression> Optimizer::MakeGroupExpression(
+  std::shared_ptr<OpExpression> expr)
+{
+  std::vector<GroupID> child_groups = MemoTransformedChildren(expr);
+  return std::make_shared<GroupExpression>(expr->Op(), child_groups);
+}
+
+std::vector<GroupID> Optimizer::MemoTransformedChildren(
+  std::shared_ptr<OpExpression> expr)
+{
+  std::vector<GroupID> child_groups;
+  for (std::shared_ptr<OpExpression> child : expr->Children()) {
+    child_groups.push_back(MemoTransformedExpression(child));
+  }
+
+  return child_groups;
+}
+
+GroupID Optimizer::MemoTransformedExpression(
+  std::shared_ptr<OpExpression> expr)
+{
+  std::shared_ptr<GroupExpression> gexpr = MakeGroupExpression(expr);
+  // Ignore whether this expression is new or not as we only care about that
+  // at the top level
+  (void)memo.InsertExpression(gexpr);
+  return gexpr->GetGroupID();
+}
+
+bool Optimizer::RecordTransformedExpression(
+  std::shared_ptr<OpExpression> expr,
+  std::shared_ptr<GroupExpression> &gexpr)
+{
+  gexpr = MakeGroupExpression(expr);
+  return memo.InsertExpression(gexpr);
 }
 
 }  // namespace optimizer
