@@ -45,11 +45,13 @@ GroupBindingIterator::GroupBindingIterator(Optimizer &optimizer,
   // current pattern. However, because our rules don't currently expose the
   // structure of the output they produce after a transformation, we must be
   // conservative and apply all rules
+  const std::vector<std::shared_ptr<GroupExpression>> gexprs =
+    target_group->GetExpressions();
   for (size_t i = 0; i < num_group_items; ++i) {
     if (!target_group_explored[i]) {
       target_group->set_explored(i);
       for (const Rule &rule : optimizer.rules) {
-        optimizer.ExploreItem(group_id, i, rule);
+        optimizer.ExploreExpression(gexprs[i], rule);
       }
     }
   }
@@ -72,10 +74,10 @@ bool GroupBindingIterator::HasNext() {
     // Keep checking item iterators until we find a match
     while (current_item_index < num_group_items) {
       current_iterator.reset(
-        new ItemBindingIterator(optimizer,
-                                group_id,
-                                current_item_index,
-                                pattern));
+        new ItemBindingIterator(
+          optimizer,
+          target_group->GetExpressions()[current_item_index],
+          pattern));
 
       if (current_iterator->HasNext()) {
         break;
@@ -101,24 +103,18 @@ std::shared_ptr<OpExpression> GroupBindingIterator::Next() {
 // Item Binding Iterator
 //===--------------------------------------------------------------------===//
 ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
-                                         GroupID id,
-                                         size_t item_index,
+                                         std::shared_ptr<GroupExpression> gexpr,
                                          std::shared_ptr<Pattern> pattern)
   : BindingIterator(optimizer),
-    group_id(id),
-    item_index(item_index),
+    gexpr(gexpr),
     pattern(pattern),
     first(true),
     has_next(false),
-    current_binding(
-      std::make_shared<OpExpression>(
-        memo.GetGroupByID(id)->GetExpressions()[item_index]->Op()))
+    current_binding(std::make_shared<OpExpression>(gexpr->Op()))
 {
-  const std::shared_ptr<GroupExpression> item =
-    memo.GetGroupByID(id)->GetExpressions()[item_index];
-  if (item->Op().type() != pattern->Type()) return;
+  if (gexpr->Op().type() != pattern->Type()) return;
 
-  const std::vector<GroupID> &child_groups = item->ChildGroupIDs();
+  const std::vector<GroupID> &child_groups = gexpr->ChildGroupIDs();
   const std::vector<std::shared_ptr<Pattern>> &child_patterns =
     pattern->Children();
 

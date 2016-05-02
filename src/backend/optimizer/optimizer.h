@@ -88,9 +88,8 @@ class Optimizer {
   /*
    *
    */
-  void OptimizeItem(GroupID id,
-                    size_t item_index,
-                    std::vector<Property> requirements);
+  void OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
+                          std::vector<Property> requirements);
 
   /* Explore - check the operator tree root for the given pattern
    *
@@ -106,9 +105,15 @@ class Optimizer {
    * pattern: an operator tree representing a query
    * return: the best physical plan which represents the given operator tree
    */
-  void ExploreItem(GroupID id,
-                   size_t item_index,
-                   const Rule &rule);
+  void ExploreExpression(std::shared_ptr<GroupExpression> gexpr,
+                         const Rule &rule);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Rule application
+  std::vector<std::shared_ptr<GroupExpression>>
+  TransformExpression(std::shared_ptr<GroupExpression> gexpr, const Rule &rule);
+
+  void ApplyRule(std::shared_ptr<GroupExpression> gexpr, const Rule &rule);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Memo insertion

@@ -26,6 +26,10 @@ class Rule {
 
   std::shared_ptr<Pattern> GetMatchPattern() const { return match_pattern; }
 
+  bool IsPhysical() const { return physical; }
+
+  bool IsLogical() const { return logical; }
+
   virtual bool Check(std::shared_ptr<OpExpression> expr) const = 0;
 
   virtual void Transform(
@@ -34,6 +38,8 @@ class Rule {
 
  protected:
   std::shared_ptr<Pattern> match_pattern;
+  bool physical = false;
+  bool logical = false;
 };
 
 } /* namespace optimizer */

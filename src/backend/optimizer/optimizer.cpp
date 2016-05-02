@@ -78,17 +78,18 @@ std::vector<Property> Optimizer::GetQueryTreeRequiredProperties(
 }
 
 void Optimizer::OptimizeGroup(GroupID id, std::vector<Property> requirements) {
-  size_t num_expressions = memo.GetGroupByID(id)->GetExpressions().size();
-  for (size_t item_index = 0; item_index < num_expressions; ++item_index) {
-    OptimizeItem(id, item_index, requirements);
+  Group *group = memo.GetGroupByID(id);
+  const std::vector<std::shared_ptr<GroupExpression>> exprs =
+    group->GetExpressions();
+  for (size_t i = 0; i < exprs.size(); ++i) {
+    OptimizeExpression(exprs[i], requirements);
   }
 
   // Choose best from group
 }
 
-void Optimizer::OptimizeItem(GroupID group_id,
-                             size_t item_index,
-                             std::vector<Property> requirements)
+void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
+                                   std::vector<Property> requirements)
 {
   // Apply all rules to operator which match. We apply all rules to one operator
   // before moving on to the next operator in the group because then we avoid
@@ -96,7 +97,19 @@ void Optimizer::OptimizeItem(GroupID group_id,
   // a match for a previously applied rule, but it is missed because the prev
   // rule was already checked
   for (const Rule &rule : rules) {
-    ExploreItem(group_id, item_index, rule);
+    ExploreExpression(gexpr, rule);
+  }
+
+  // Apply physical transformations and cost those which match the requirements
+  for (const Rule &rule : rules) {
+    if (!rule.IsPhysical()) continue;
+
+    std::vector<std::shared_ptr<GroupExpression>> candidates =
+      TransformExpression(gexpr, rule);
+
+    for (std::shared_ptr<GroupExpression> candidate : candidates) {
+      // Ignore if it does not fulfill requirements
+    }
   }
   (void)requirements;
 }
@@ -105,17 +118,29 @@ void Optimizer::ExploreGroup(GroupID id, const Rule &rule) {
   // for (Operator op : group.GetOperators()) {
   //   ExploreItem(op, rule);
   // }
-  (void)id;
-  (void)rule;
+  (void) id;
+  (void) rule;
 }
 
-void Optimizer::ExploreItem(GroupID id,
-                            size_t item_index,
-                            const Rule &rule)
+void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr,
+                                  const Rule &rule)
+{
+  if (!rule.IsLogical()) return;
+
+  (void) TransformExpression(gexpr, rule);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// Rule application
+std::vector<std::shared_ptr<GroupExpression>>
+Optimizer::TransformExpression(std::shared_ptr<GroupExpression> gexpr,
+                                    const Rule &rule)
 {
   std::shared_ptr<Pattern> pattern = rule.GetMatchPattern();
 
-  ItemBindingIterator iterator(*this, id, item_index, pattern);
+  std::vector<std::shared_ptr<GroupExpression>> output_plans;
+  ItemBindingIterator iterator(*this, gexpr, pattern);
   while (iterator.HasNext()) {
     std::shared_ptr<OpExpression> plan = iterator.Next();
     // Check rule condition function
@@ -124,21 +149,27 @@ void Optimizer::ExploreItem(GroupID id,
       // We need to be able to analyze the transformations performed by this
       // rule in order to perform deduplication and launch an exploration of
       // the newly applied rule
-      std::vector<std::shared_ptr<OpExpression>> output_plans;
-      rule.Transform(plan, output_plans);
+      std::vector<std::shared_ptr<OpExpression>> transformed_plans;
+      rule.Transform(plan, transformed_plans);
 
       // Integrate transformed plans back into groups and explore/cost if new
-      for (std::shared_ptr<OpExpression> plan : output_plans) {
+      for (std::shared_ptr<OpExpression> plan : transformed_plans) {
         std::shared_ptr<GroupExpression> gexpr;
         bool new_expression = RecordTransformedExpression(plan, gexpr);
+        // Should keep exploring this new expression with the current rule
+        // but because we do exhaustive search anyway right now we do not
+        // gain much from doing so, so don't
         if (new_expression) {
+          output_plans.push_back(gexpr);
         }
       }
     }
   }
+  return output_plans;
 }
 
-
+//////////////////////////////////////////////////////////////////////////////
+/// Memo insertion
 std::shared_ptr<GroupExpression> Optimizer::MakeGroupExpression(
   std::shared_ptr<OpExpression> expr)
 {

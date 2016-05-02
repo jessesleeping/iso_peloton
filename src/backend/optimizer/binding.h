@@ -69,8 +69,7 @@ class GroupBindingIterator : public BindingIterator {
 class ItemBindingIterator : public BindingIterator {
  public:
   ItemBindingIterator(Optimizer &optimizer,
-                      GroupID id,
-                      size_t item_index,
+                      std::shared_ptr<GroupExpression> gexpr,
                       std::shared_ptr<Pattern> pattern);
 
   bool HasNext() override;
@@ -78,8 +77,7 @@ class ItemBindingIterator : public BindingIterator {
   std::shared_ptr<OpExpression> Next() override;
 
  private:
-  GroupID group_id;
-  size_t item_index;
+  std::shared_ptr<GroupExpression> gexpr;
   std::shared_ptr<Pattern> pattern;
 
   bool first;
