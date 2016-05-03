@@ -37,9 +37,20 @@ Operator LogicalGet::make(storage::DataTable *table,
   return Operator(get);
 }
 
+bool LogicalGet::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::Get) return false;
+  const LogicalGet &r = *static_cast<const LogicalGet*>(&node);
+  if (table->GetOid() != r.table->GetOid()) return false;
+  if (columns.size() != r.columns.size()) return false;
+
+  for (size_t i = 0; i < columns.size(); ++i) {
+    if (columns[i] != r.columns[i]) return false;
+  }
+  return true;
+}
 
 hash_t LogicalGet::Hash() const {
-  uint64_t hash = BaseOperatorNode::Hash();
+  hash_t hash = BaseOperatorNode::Hash();
   oid_t table_oid = table->GetOid();
   hash = util::CombineHashes(hash, util::Hash<oid_t>(&table_oid));
   for (Column *col : columns) {
@@ -125,6 +136,27 @@ Operator PhysicalScan::make(oid_t base_table, std::vector<Column *> columns) {
   return Operator(get);
 }
 
+bool PhysicalScan::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::Scan) return false;
+  const PhysicalScan &r = *static_cast<const PhysicalScan *>(&node);
+  if (base_table != r.base_table) return false;
+  if (columns.size() != r.columns.size()) return false;
+
+  for (size_t i = 0; i < columns.size(); ++i) {
+    if (columns[i] != r.columns[i]) return false;
+  }
+  return true;
+}
+
+hash_t PhysicalScan::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, util::Hash<oid_t>(&base_table));
+  for (Column *col : columns) {
+    hash = util::CombineHashes(hash, col->Hash());
+  }
+  return hash;
+}
+
 //===--------------------------------------------------------------------===//
 // InnerHashJoin
 //===--------------------------------------------------------------------===//
@@ -170,6 +202,19 @@ Operator ExprVariable::make(Column *column) {
   return Operator(var);
 }
 
+bool ExprVariable::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::Variable) return false;
+  const ExprVariable &r = *static_cast<const ExprVariable *>(&node);
+  if (column != r.column) return false;
+  return true;
+}
+
+hash_t ExprVariable::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, column->Hash());
+  return hash;
+}
+
 //===--------------------------------------------------------------------===//
 // Constant
 //===--------------------------------------------------------------------===//
@@ -179,13 +224,39 @@ Operator ExprConstant::make(Value value) {
   return Operator(constant);
 }
 
+bool ExprConstant::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::Constant) return false;
+  const ExprConstant &r = *static_cast<const ExprConstant *>(&node);
+  if (value != r.value) return false;
+  return true;
+}
+
+hash_t ExprConstant::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, value.MurmurHash3());
+  return hash;
+}
+
 //===--------------------------------------------------------------------===//
 // Compare
 //===--------------------------------------------------------------------===//
 Operator ExprCompare::make(ExpressionType type) {
   ExprCompare *cmp = new ExprCompare;
-  cmp->type = type;
+  cmp->expr_type = type;
   return Operator(cmp);
+}
+
+bool ExprCompare::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::Compare) return false;
+  const ExprCompare &r = *static_cast<const ExprCompare *>(&node);
+  if (expr_type != r.expr_type) return false;
+  return true;
+}
+
+hash_t ExprCompare::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, util::Hash<ExpressionType>(&expr_type));
+  return hash;
 }
 
 //===--------------------------------------------------------------------===//
@@ -193,8 +264,21 @@ Operator ExprCompare::make(ExpressionType type) {
 //===--------------------------------------------------------------------===//
 Operator ExprBoolOp::make(BoolOpType type) {
   ExprBoolOp *bool_op = new ExprBoolOp;
-  bool_op->type = type;
+  bool_op->bool_type = type;
   return Operator(bool_op);
+}
+
+bool ExprBoolOp::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::BoolOp) return false;
+  const ExprBoolOp &r = *static_cast<const ExprBoolOp *>(&node);
+  if (bool_type != r.bool_type) return false;
+  return true;
+}
+
+hash_t ExprBoolOp::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, util::Hash<BoolOpType>(&bool_type));
+  return hash;
 }
 
 //===--------------------------------------------------------------------===//
@@ -202,8 +286,21 @@ Operator ExprBoolOp::make(BoolOpType type) {
 //===--------------------------------------------------------------------===//
 Operator ExprOp::make(ExpressionType type) {
   ExprOp *op = new ExprOp;
-  op->type = type;
+  op->expr_type = type;
   return Operator(op);
+}
+
+bool ExprOp::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::Op) return false;
+  const ExprOp &r = *static_cast<const ExprOp *>(&node);
+  if (expr_type != r.expr_type) return false;
+  return true;
+}
+
+hash_t ExprOp::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, util::Hash<ExpressionType>(&expr_type));
+  return hash;
 }
 
 //===--------------------------------------------------------------------===//
@@ -222,6 +319,21 @@ Operator ExprProjectColumn::make(std::string name) {
   col->name = name;
   return Operator(col);
 }
+
+bool ExprProjectColumn::operator==(const BaseOperatorNode &node) {
+  if (node.type() != OpType::ProjectColumn) return false;
+  const ExprProjectColumn &r = *static_cast<const ExprProjectColumn *>(&node);
+  if (name != r.name) return false;
+  return true;
+}
+
+hash_t ExprProjectColumn::Hash() const {
+  hash_t hash = BaseOperatorNode::Hash();
+  hash = util::CombineHashes(hash, util::HashBytes(name.data(), name.size()));
+  return hash;
+}
+
+//===--------------------------------------------------------------------===//
 
 template<>
 void OperatorNode<LeafOperator>::accept(OperatorVisitor *v) const {

@@ -41,6 +41,8 @@ class LogicalGet : public OperatorNode<LogicalGet> {
   static Operator make(storage::DataTable *table,
                        std::vector<Column *> cols);
 
+  bool operator==(const BaseOperatorNode &r) override;
+
   hash_t Hash() const override;
 
   storage::DataTable *table;
@@ -118,6 +120,10 @@ class PhysicalScan : public OperatorNode<PhysicalScan> {
  public:
   static Operator make(oid_t base_table, std::vector<Column *> columns);
 
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
+
   oid_t base_table;
   std::vector<Column *> columns;
 };
@@ -161,6 +167,10 @@ class ExprVariable : public OperatorNode<ExprVariable> {
  public:
   static Operator make(Column *column);
 
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
+
   Column *column;
 };
 
@@ -170,6 +180,10 @@ class ExprVariable : public OperatorNode<ExprVariable> {
 class ExprConstant : public OperatorNode<ExprConstant> {
  public:
   static Operator make(Value value);
+
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
 
   Value value;
 };
@@ -181,7 +195,11 @@ class ExprCompare : public OperatorNode<ExprCompare> {
  public:
   static Operator make(ExpressionType type);
 
-  ExpressionType type;
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
+
+  ExpressionType expr_type;
 };
 
 //===--------------------------------------------------------------------===//
@@ -197,7 +215,11 @@ class ExprBoolOp : public OperatorNode<ExprBoolOp> {
  public:
   static Operator make(BoolOpType type);
 
-  BoolOpType type;
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
+
+  BoolOpType bool_type;
 };
 
 //===--------------------------------------------------------------------===//
@@ -207,7 +229,11 @@ class ExprOp : public OperatorNode<ExprOp> {
  public:
   static Operator make(ExpressionType type);
 
-  ExpressionType type;
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
+
+  ExpressionType expr_type;
 };
 
 //===--------------------------------------------------------------------===//
@@ -224,6 +250,10 @@ class ExprProjectList : public OperatorNode<ExprProjectList> {
 class ExprProjectColumn : public OperatorNode<ExprProjectColumn> {
  public:
   static Operator make(std::string name);
+
+  bool operator==(const BaseOperatorNode &r) override;
+
+  hash_t Hash() const override;
 
   std::string name;
 };
