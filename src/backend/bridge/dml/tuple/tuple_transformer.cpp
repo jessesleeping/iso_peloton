@@ -124,6 +124,7 @@ ValueType TupleTransformer::GetValueType(Oid atttypid) {
 
     default:
     LOG_ERROR("Unknown atttypeid : %u ", atttypid);
+      value_type = VALUE_TYPE_INVALID;
       break;
   }
 
