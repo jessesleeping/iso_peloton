@@ -86,13 +86,18 @@ class QueryTreeConverter : public QueryNodeVisitor {
     std::vector<Column *> columns;
 
     storage::DataTable *table = op->data_table;
+    catalog::Schema *schema = table->GetSchema();
     oid_t table_oid = table->GetOid();
-    for (catalog::Column schema_col : table->GetSchema()->GetColumns()) {
-      Column *col = manager.LookupColumn(table_oid, schema_col.GetOffset());
+    for (oid_t column_id = 0;
+         column_id < schema->GetColumnCount();
+         column_id++)
+    {
+      catalog::Column schema_col = schema->GetColumn(column_id);
+      Column *col = manager.LookupColumn(table_oid, column_id);
       if (col == nullptr) {
         col = manager.AddColumn(schema_col.GetName(),
                                 table_oid,
-                                schema_col.GetOffset(),
+                                column_id,
                                 schema_col.GetType());
       }
       columns.push_back(col);

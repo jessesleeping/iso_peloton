@@ -30,8 +30,7 @@ std::string QueryNodePrinter::print() {
 void QueryNodePrinter::visit(const Variable *op) {
   append("Variable: ");
   append("base_table_oid " + std::to_string(op->base_table_oid));
-  append(", column_offset " +
-         std::to_string(op->column.GetOffset()));
+  append(", column_offset " + std::to_string(op->column_index));
   append(", type " + ValueTypeToString(op->column.GetType()));
 }
 

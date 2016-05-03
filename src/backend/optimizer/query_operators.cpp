@@ -29,8 +29,8 @@ const QueryExpression *QueryExpression::GetParent() const { return parent_; }
 //===--------------------------------------------------------------------===//
 // Variable
 //===--------------------------------------------------------------------===//
-Variable::Variable(oid_t base_table, catalog::Column col)
-  : base_table_oid(base_table), column(col)
+Variable::Variable(oid_t base_table, oid_t column_index, catalog::Column col)
+  : base_table_oid(base_table), column_index(column_index), column(col)
 {
 }
 

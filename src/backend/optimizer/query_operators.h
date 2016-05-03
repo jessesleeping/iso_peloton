@@ -68,13 +68,14 @@ struct QueryExpression {
 // Variable
 //===--------------------------------------------------------------------===//
 struct Variable : QueryExpression {
-  Variable(oid_t base_table_oid, catalog::Column col);
+  Variable(oid_t base_table_oid, oid_t column_index, catalog::Column col);
 
   virtual ExpressionType GetExpressionType() const override;
 
   virtual void accept(QueryNodeVisitor *v) const override;
 
   oid_t base_table_oid;
+  oid_t column_index;
   catalog::Column column;
 };
 

@@ -106,7 +106,7 @@ Variable *QueryTransformer::ConvertVar(Var *expr) {
                                                     base_table_oid));
 
   catalog::Column col = data_table->GetSchema()->GetColumn(column_index);
-  return new Variable(base_table_oid, col);
+  return new Variable(base_table_oid, column_index, col);
 }
 
 Constant *QueryTransformer::ConvertConst(Const *expr) {
