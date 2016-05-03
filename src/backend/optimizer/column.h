@@ -29,16 +29,22 @@ using ColumnID = int32_t;
 //===--------------------------------------------------------------------===//
 class Column {
  public:
-  Column(ColumnID id, peloton::ExpressionType type, std::string name);
+  Column(ColumnID id,
+         std::string name,
+         oid_t base_table,
+         oid_t column_index,
+         ValueType type);
+
+  ColumnID ID();
 
   hash_t Hash() const;
 
  private:
-  ColumnID id;
-
-  peloton::ExpressionType type;
-
-  std::string name;
+  const ColumnID id;
+  const std::string name;
+  const oid_t base_table;
+  const oid_t column_index;
+  const ValueType type;
 };
 
 } /* namespace optimizer */

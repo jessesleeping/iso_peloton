@@ -29,12 +29,8 @@ const QueryExpression *QueryExpression::GetParent() const { return parent_; }
 //===--------------------------------------------------------------------===//
 // Variable
 //===--------------------------------------------------------------------===//
-Variable::Variable(oid_t tuple_index, oid_t column_index,
-                   oid_t base_table_oid, oid_t base_table_column_index)
-  : tuple_index(tuple_index),
-    column_index(column_index),
-    base_table_oid(base_table_oid),
-    base_table_column_index(base_table_column_index)
+Variable::Variable(oid_t base_table, catalog::Column col)
+  : base_table_oid(base_table), column(col)
 {
 }
 
@@ -124,9 +120,10 @@ void NotOperator::accept(QueryNodeVisitor *v) const {
 // Attribute
 //===--------------------------------------------------------------------===//
 Attribute::Attribute(
-  int table_index,
-  int column_index)
-  : table_index(table_index), column_index(column_index)
+  QueryExpression *expression,
+  std::string name,
+  bool intermediate)
+  : expression(expression), name(name), intermediate(intermediate)
 {}
 
 ExpressionType Attribute::GetExpressionType() const {
@@ -150,8 +147,8 @@ const QueryJoinNode *QueryJoinNode::GetParent() const { return parent_; }
 //===--------------------------------------------------------------------===//
 // Table
 //===--------------------------------------------------------------------===//
-Table::Table(oid_t table_oid, storage::DataTable *data_table)
-  : table_oid(table_oid), data_table(data_table)
+Table::Table(storage::DataTable *data_table)
+  : data_table(data_table)
 {}
 
 QueryJoinNodeType Table::GetPlanNodeType() const {
@@ -212,11 +209,10 @@ void OrderBy::accept(QueryNodeVisitor *v) const {
 //===--------------------------------------------------------------------===//
 // Select
 //===--------------------------------------------------------------------===//
-Select::Select(
-  QueryJoinNode *join_tree,
-  QueryExpression *where_predicate,
-  const std::vector<Attribute*>& output_list,
-  const std::vector<OrderBy*>& orderings)
+Select::Select(QueryJoinNode *join_tree,
+               QueryExpression *where_predicate,
+               const std::vector<Attribute *>& output_list,
+               const std::vector<OrderBy *>& orderings)
   : join_tree(join_tree),
     where_predicate(where_predicate),
     output_list(output_list),

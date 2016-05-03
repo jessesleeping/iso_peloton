@@ -2,28 +2,18 @@
 //
 //                         Peloton
 //
-// property.h
+// property.cpp
 //
-// Identification: src/backend/optimizer/property.h
+// Identification: src/backend/optimizer/property.cpp
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#pragma once
+#include "backend/optimizer/property.h"
 
 namespace peloton {
 namespace optimizer {
-
-enum class PropertyType {
-  Sort,
-  Columns,
-};
-
-class Property {
- public:
-  
-};
 
 } /* namespace optimizer */
 } /* namespace peloton */

@@ -68,18 +68,14 @@ struct QueryExpression {
 // Variable
 //===--------------------------------------------------------------------===//
 struct Variable : QueryExpression {
-  Variable(oid_t tuple_index, oid_t column_index,
-           oid_t base_table, oid_t base_table_column_index);
+  Variable(oid_t base_table_oid, catalog::Column col);
 
   virtual ExpressionType GetExpressionType() const override;
 
   virtual void accept(QueryNodeVisitor *v) const override;
 
-  oid_t tuple_index;
-  oid_t column_index;
-
   oid_t base_table_oid;
-  oid_t base_table_column_index;
+  catalog::Column column;
 };
 
 //===--------------------------------------------------------------------===//
@@ -148,14 +144,17 @@ struct NotOperator : QueryExpression {
 // Attribute
 //===--------------------------------------------------------------------===//
 struct Attribute : QueryExpression {
-  Attribute(int table_index, int column_index);
+  Attribute(QueryExpression *expression,
+            std::string name,
+            bool intermediate);
 
   virtual ExpressionType GetExpressionType() const override;
 
   void accept(QueryNodeVisitor *v) const override;
 
-  int table_index;
-  int column_index;
+  QueryExpression *expression;
+  std::string name;
+  bool intermediate;
 };
 
 //===--------------------------------------------------------------------===//
@@ -193,13 +192,12 @@ struct QueryJoinNode {
 // Table
 //===--------------------------------------------------------------------===//
 struct Table : QueryJoinNode {
-  Table(oid_t table_oid, storage::DataTable *data_table);
+  Table(storage::DataTable *data_table);
 
   virtual QueryJoinNodeType GetPlanNodeType() const override;
 
   virtual void accept(QueryNodeVisitor *v) const override;
 
-  oid_t table_oid;
   storage::DataTable *data_table;
 };
 
@@ -226,14 +224,6 @@ struct Join : QueryJoinNode {
 
   QueryExpression *predicate;
 
-  /* Mapping from output attribute index to input attribute source
-   *
-   * Each element in the vector is a pair where the first oid_t
-   * corresponds to which input it came from (0 for left, 1 for right)
-   * and the second oid_t corresponds to which attribute in that input
-   */
-  std::vector<std::pair<oid_t, oid_t>> output_attribute_mapping;
-
   // List of all base relations in left node
   std::vector<Table *> left_node_tables;
 
@@ -254,13 +244,12 @@ struct Join : QueryJoinNode {
 // Order By
 //===--------------------------------------------------------------------===//
 struct OrderBy {
-  OrderBy(
-    int output_list_index,
-    bridge::PltFuncMetaInfo equality_fn,
-    bridge::PltFuncMetaInfo sort_fn,
-    bool hashable,
-    bool nulls_first,
-    bool reverse);
+  OrderBy(int output_list_index,
+          bridge::PltFuncMetaInfo equality_fn,
+          bridge::PltFuncMetaInfo sort_fn,
+          bool hashable,
+          bool nulls_first,
+          bool reverse);
 
   void accept(QueryNodeVisitor *v) const;
 

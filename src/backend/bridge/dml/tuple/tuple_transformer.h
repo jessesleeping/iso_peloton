@@ -39,6 +39,8 @@ class TupleTransformer {
 
   TupleTransformer(){};
 
+  static ValueType GetValueType(Oid atttypid);
+
   static Value GetValue(Datum datum, Oid atttypid);
 
   static Datum GetDatum(peloton::Value value);

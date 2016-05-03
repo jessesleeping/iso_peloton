@@ -39,8 +39,6 @@ class QueryTransformer {
   Select *Transform(Query *pg_query);
 
  private:
-  oid_t FindTupleIndex(oid_t base_table_oid);
-
   std::vector<Table *> GetJoinNodeTables(QueryJoinNode *expr);
 
   PelotonJoinType TransformJoinType(const JoinType type);

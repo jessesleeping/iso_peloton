@@ -18,9 +18,21 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 // Column
 //===--------------------------------------------------------------------===//
-Column::Column(ColumnID id, peloton::ExpressionType type, std::string name)
-  : id(id), type(type), name(name)
+Column::Column(ColumnID id,
+               std::string name,
+               oid_t base_table,
+               oid_t column_index,
+               ValueType type)
+  : id(id),
+    name(name),
+    base_table(base_table),
+    column_index(column_index),
+    type(type)
 {
+}
+
+ColumnID Column::ID() {
+  return id;
 }
 
 hash_t Column::Hash() const {

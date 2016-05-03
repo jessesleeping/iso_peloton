@@ -45,20 +45,6 @@ Select *QueryTransformer::Transform(Query *pg_query) {
   return ConvertQuery(pg_query);
 }
 
-oid_t QueryTransformer::FindTupleIndex(oid_t base_table_oid) {
-  // Check left table
-  for (size_t i = 0; i < left_tables.size(); ++i) {
-    if (left_tables[i]->table_oid == base_table_oid)
-      return 0;
-  }
-  for (size_t i = 0; i < right_tables.size(); ++i) {
-    if (right_tables[i]->table_oid == base_table_oid)
-      return 1;
-  }
-  assert(false);
-  return 2;
-}
-
 std::vector<Table *> QueryTransformer::GetJoinNodeTables(
   QueryJoinNode *expr)
 {
@@ -105,7 +91,7 @@ Variable *QueryTransformer::ConvertVar(Var *expr) {
   RangeTblEntry *rte = rte_entries[rte_index];
 
   oid_t base_table_oid = rte->relid;
-  oid_t base_table_column_index =
+  oid_t column_index =
     static_cast<oid_t>(AttrNumberGetAttrOffset(expr->varattno));
 
   // varattno of zero is entire row, which shouldn't happen as we already
@@ -115,10 +101,12 @@ Variable *QueryTransformer::ConvertVar(Var *expr) {
     return nullptr;
   }
 
-  oid_t tuple_index = FindTupleIndex(base_table_oid);
+  storage::DataTable *data_table = static_cast<storage::DataTable *>(
+    catalog::Manager::GetInstance().GetTableWithOid(database_oid,
+                                                    base_table_oid));
 
-  return new Variable(tuple_index, /* unused for now */0, base_table_oid,
-                      base_table_column_index);
+  catalog::Column col = data_table->GetSchema()->GetColumn(column_index);
+  return new Variable(base_table_oid, col);
 }
 
 Constant *QueryTransformer::ConvertConst(Const *expr) {
@@ -300,19 +288,14 @@ OrderBy *QueryTransformer::ConvertSortGroupClause(
 
 Attribute *QueryTransformer::ConvertTargetEntry(TargetEntry *te) {
   LOG_DEBUG("Converting TargetEntry");
-  // Fail if the target is anything other than basic column reference
-  if (te->resorigtbl == 0) return nullptr;
 
-  if (!IsA(te->expr, Var)) return nullptr;
+  QueryExpression *expression = ConvertPostgresExpression(te->expr);
 
-  Var *var = reinterpret_cast<Var*>(te->expr);
+  std::string name = te->resname ? std::string(te->resname) : "";
 
-  // We subtract one because postgres indexes starting at 1
-  // but peloton starts at 0
-  int table_list_index = var->varno - 1;
-  oid_t column_index =
-    static_cast<oid_t>(AttrNumberGetAttrOffset(var->varattno));
-  return new Attribute(table_list_index, column_index);
+  bool intermediate = te->resjunk;
+
+  return new Attribute(expression, name, intermediate);
 }
 
 Table *QueryTransformer::ConvertRangeTblEntry(RangeTblEntry *rte) {
@@ -324,7 +307,7 @@ Table *QueryTransformer::ConvertRangeTblEntry(RangeTblEntry *rte) {
       storage::DataTable *data_table = static_cast<storage::DataTable *>(
           catalog::Manager::GetInstance().GetTableWithOid(database_oid,
                                                           rte->relid));
-      table = new Table(rte->relid, data_table);
+      table = new Table(data_table);
     }
     break;
   }
@@ -342,7 +325,7 @@ QueryJoinNode *QueryTransformer::ConvertRangeTblRef(RangeTblRef *expr) {
 
   storage::DataTable *data_table = static_cast<storage::DataTable *>(
     catalog::Manager::GetInstance().GetTableWithOid(database_oid, rte->relid));
-  return new Table(rte->relid, data_table);
+  return new Table(data_table);
 }
 
 QueryJoinNode *QueryTransformer::ConvertJoinExpr(JoinExpr *expr) {

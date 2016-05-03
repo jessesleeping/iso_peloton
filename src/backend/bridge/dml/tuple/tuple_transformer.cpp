@@ -32,6 +32,107 @@ namespace peloton {
 namespace bridge {
 
 /**
+ * @brief Convert from Oid to ValueType.
+ * @return converted ValueType.
+ */
+ValueType TupleTransformer::GetValueType(Oid atttypid) {
+  ValueType value_type;
+
+  switch (atttypid) {
+    case POSTGRES_VALUE_TYPE_SMALLINT: {
+      value_type = VALUE_TYPE_SMALLINT;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_INTEGER: {
+      value_type = VALUE_TYPE_INTEGER;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_BIGINT: {
+      value_type = VALUE_TYPE_BIGINT;
+    } break;
+    case POSTGRES_VALUE_TYPE_REAL: {
+      value_type = VALUE_TYPE_DOUBLE;
+    } break;
+    case POSTGRES_VALUE_TYPE_DOUBLE: {
+      value_type = VALUE_TYPE_DOUBLE;
+    } break;
+
+      /*
+       * In PG, BPCHAR and VARCHAR and TEXT are represented using
+       * 'struct varlena',
+       * which is a 4-byte header followed by the meat.
+       * However, the 4-byte header should not be accessed directly.
+       * It should be used in MACROS:
+       * VARSIZE(ptr), VARDATA(ptr) and VARHDRSZ.
+       * NB1: VARSIZE(ptr) is the size of the meat PLUS the header.
+       * NB2: DON'T assume strings have terminating-null's.
+       */
+    case POSTGRES_VALUE_TYPE_BPCHAR: {
+      value_type = VALUE_TYPE_VARCHAR;
+    } break;
+
+      /*
+       * POSTGRES_VALUE_TYPE_BPCHAR2 is array of BPCHAR
+       * This case can be seen with IN operator:
+       * such as select * from foo where address IN ('Pitts','LA'),
+       * here address is type of char(50)
+       */
+      // This case is seen with IN operator: select * from foo where address IN
+      // ('Pitts','LA');
+    case POSTGRES_VALUE_TYPE_BPCHAR2: {
+      value_type = VALUE_TYPE_ARRAY;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_VARCHAR2: {
+      value_type = VALUE_TYPE_VARCHAR;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_TEXT: {
+      value_type = VALUE_TYPE_VARCHAR;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_TEXT_ARRAY: {
+      value_type = VALUE_TYPE_ARRAY;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_INT2_ARRAY: {
+      value_type = VALUE_TYPE_ARRAY;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_INT4_ARRAY: {
+      value_type = VALUE_TYPE_ARRAY;
+    } break;
+
+      // FLOADT4 is same with double (8 bytes) ?
+    case POSTGRES_VALUE_TYPE_FLOADT4_ARRAY: {
+      value_type = VALUE_TYPE_ARRAY;
+    } break;
+
+      // In Postgres, dates are 4-byte values representing the number of days
+      // since the year 2000. We retain those semantics in Peloton.
+    case POSTGRES_VALUE_TYPE_DATE: {
+      value_type = VALUE_TYPE_DATE;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_TIMESTAMPS: {
+      value_type = VALUE_TYPE_TIMESTAMP;
+    } break;
+
+    case POSTGRES_VALUE_TYPE_DECIMAL: {
+      value_type = VALUE_TYPE_DECIMAL;
+    } break;
+
+    default:
+    LOG_ERROR("Unknown atttypeid : %u ", atttypid);
+      break;
+  }
+
+  return value_type;
+}
+
+
+
+/**
  * @brief Convert from Datum to Value.
  * @return converted Value.
  */

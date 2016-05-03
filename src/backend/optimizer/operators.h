@@ -18,6 +18,8 @@
 #include "backend/optimizer/column.h"
 #include "backend/optimizer/util.h"
 
+#include <vector>
+
 namespace peloton {
 namespace optimizer {
 
@@ -36,11 +38,12 @@ class LeafOperator : OperatorNode<LeafOperator> {
 //===--------------------------------------------------------------------===//
 class LogicalGet : public OperatorNode<LogicalGet> {
  public:
-  static Operator make(oid_t base_table, std::vector<Column *> cols);
+  static Operator make(storage::DataTable *table,
+                       std::vector<Column *> cols);
 
   hash_t Hash() const override;
 
-  oid_t base_table;
+  storage::DataTable *table;
   std::vector<Column *> columns;
 };
 

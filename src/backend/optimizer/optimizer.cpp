@@ -12,6 +12,7 @@
 
 #include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/operator_visitor.h"
+#include "backend/optimizer/query_node_visitor.h"
 
 #include "backend/planner/projection_plan.h"
 #include "backend/planner/seq_scan_plan.h"
@@ -27,6 +28,143 @@ namespace peloton {
 namespace optimizer {
 
 namespace {
+
+class QueryTreeConverter : public QueryNodeVisitor {
+ public:
+  QueryTreeConverter(ColumnManager &manager)
+    : manager(manager) {
+  }
+
+  std::shared_ptr<OpExpression> ConvertToOpExpression(const Select *op) {
+    op->accept(this);
+    return output_expr;
+  }
+
+  void visit(const Variable *op) override {
+    storage::DataTable *data_table = static_cast<storage::DataTable *>(
+      catalog::Manager::GetInstance().GetTableWithOid(
+        bridge::Bridge::GetCurrentDatabaseOid(), op->base_table_oid));
+    catalog::Column schema_col = op->column;
+
+    Column *col = manager.LookupColumn(data_table->GetOid(),
+                                       schema_col.GetOffset());
+    if (col == nullptr) {
+      col = manager.AddColumn(schema_col.GetName(),
+                              data_table->GetOid(),
+                              schema_col.GetOffset(),
+                              schema_col.GetType());
+    }
+
+    output_expr = std::make_shared<OpExpression>(ExprVariable::make(col));
+  }
+
+  void visit(const Constant *op) override {
+    (void) op;
+  }
+
+  void visit(const OperatorExpression *op) override {
+    (void) op;
+  }
+
+  void visit(const AndOperator *op) override {
+    (void) op;
+  }
+
+  void visit(const OrOperator *op) override {
+    (void) op;
+  }
+
+  void visit(const NotOperator *op) override {
+    (void) op;
+  }
+
+  void visit(const Attribute *op) override {
+    (void) op;
+  }
+
+  void visit(const Table *op) override {
+    std::vector<Column *> columns;
+
+    storage::DataTable *table = op->data_table;
+    oid_t table_oid = table->GetOid();
+    for (catalog::Column schema_col : table->GetSchema()->GetColumns()) {
+      Column *col = manager.LookupColumn(table_oid, schema_col.GetOffset());
+      if (col == nullptr) {
+        col = manager.AddColumn(schema_col.GetName(),
+                                table_oid,
+                                schema_col.GetOffset(),
+                                schema_col.GetType());
+      }
+      columns.push_back(col);
+    }
+    output_expr =
+      std::make_shared<OpExpression>(LogicalGet::make(op->data_table, columns));
+  }
+
+  void visit(const Join *op) override {
+    // Self
+    std::shared_ptr<OpExpression> expr;
+    switch (op->join_type) {
+    case JOIN_TYPE_INNER: {
+      expr = std::make_shared<OpExpression>(LogicalInnerJoin::make());
+    } break;
+    case JOIN_TYPE_LEFT: {
+      expr = std::make_shared<OpExpression>(LogicalLeftJoin::make());
+    } break;
+    case JOIN_TYPE_RIGHT: {
+      expr = std::make_shared<OpExpression>(LogicalRightJoin::make());
+    } break;
+    case JOIN_TYPE_OUTER: {
+      expr = std::make_shared<OpExpression>(LogicalOuterJoin::make());
+    } break;
+    default:
+      assert(false);
+    }
+
+    // Left child
+    op->left_node->accept(this);
+    expr->PushChild(output_expr);
+
+    // Right child
+    op->right_node->accept(this);
+    expr->PushChild(output_expr);
+
+    // Join condition predicate
+    op->predicate->accept(this);
+    expr->PushChild(output_expr);
+
+    output_expr = expr;
+  }
+
+  void visit(const OrderBy *op) override {
+    (void) op;
+  }
+
+  void visit(const Select *op) override {
+    // Add join tree op expression
+    op->join_tree->accept(this);
+    std::shared_ptr<OpExpression> expr = output_expr;
+
+    // Add filter for where predicate
+    if (op->where_predicate) {
+      op->where_predicate->accept(this);
+      output_expr->PushChild(expr);
+      expr = output_expr;
+    }
+    // Add all attributes in output list as projection at top level
+    for (Attribute *attr : op->output_list) {
+      (void) attr;
+    }
+
+    output_expr = expr;
+  }
+
+ private:
+  ColumnManager &manager;
+
+  std::shared_ptr<OpExpression> output_expr;
+};
+
 }
 
 //===--------------------------------------------------------------------===//
@@ -41,11 +179,12 @@ Optimizer &Optimizer::GetInstance()
 std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   std::shared_ptr<Select> select_tree)
 {
+  return nullptr;
   // Generate initial operator tree from query tree
   GroupID root_id = InsertQueryTree(select_tree);
 
   // Get the physical properties the final plan must output
-  std::vector<Property> properties =
+  PropertySet properties =
     GetQueryTreeRequiredProperties(select_tree);
 
   // Find least cost plan for root group
@@ -60,24 +199,26 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   return final_plan;
 }
 
-planner::AbstractPlan *Optimizer::OptimizerPlanToPlannerPlan(OpExpression plan) {
-  (void)plan;
-  return nullptr;
-}
-
 GroupID Optimizer::InsertQueryTree(std::shared_ptr<Select> tree) {
   (void) tree;
   return 0;
 }
 
-std::vector<Property> Optimizer::GetQueryTreeRequiredProperties(
+PropertySet Optimizer::GetQueryTreeRequiredProperties(
   std::shared_ptr<Select> tree)
 {
   (void)tree;
-  return {};
+  return PropertySet();
 }
 
-void Optimizer::OptimizeGroup(GroupID id, std::vector<Property> requirements) {
+planner::AbstractPlan *Optimizer::OptimizerPlanToPlannerPlan(
+  OpExpression plan)
+{
+  (void)plan;
+  return nullptr;
+}
+
+void Optimizer::OptimizeGroup(GroupID id, PropertySet requirements) {
   Group *group = memo.GetGroupByID(id);
   const std::vector<std::shared_ptr<GroupExpression>> exprs =
     group->GetExpressions();
@@ -89,7 +230,7 @@ void Optimizer::OptimizeGroup(GroupID id, std::vector<Property> requirements) {
 }
 
 void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
-                                   std::vector<Property> requirements)
+                                   PropertySet requirements)
 {
   // Apply all rules to operator which match. We apply all rules to one operator
   // before moving on to the next operator in the group because then we avoid

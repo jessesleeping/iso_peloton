@@ -19,6 +19,7 @@
 #include "backend/optimizer/binding.h"
 #include "backend/optimizer/pattern.h"
 #include "backend/optimizer/property.h"
+#include "backend/optimizer/property_set.h"
 #include "backend/optimizer/rule.h"
 #include "backend/planner/abstract_plan.h"
 #include "backend/common/logger.h"
@@ -50,13 +51,6 @@ class Optimizer {
     std::shared_ptr<Select> select_tree);
 
  private:
-  /* OptimizerPlanToPlannerPlan - convert a tree of physical operators to
-   * a planner plan for execution.
-   *
-   * plan: an optimizer plan composed soley of physical operators
-   * return: the corresponding planner plan
-   */
-  planner::AbstractPlan *OptimizerPlanToPlannerPlan(OpExpression plan);
 
   /* TransformQueryTree - create an initial operator tree for the given query
    * to be used in performing optimization.
@@ -72,8 +66,16 @@ class Optimizer {
    * tree: a peloton query tree representing a select query
    * return: the set of required physical properties for the query
    */
-  std::vector<Property> GetQueryTreeRequiredProperties(
+  PropertySet GetQueryTreeRequiredProperties(
     std::shared_ptr<Select> tree);
+
+  /* OptimizerPlanToPlannerPlan - convert a tree of physical operators to
+   * a planner plan for execution.
+   *
+   * plan: an optimizer plan composed soley of physical operators
+   * return: the corresponding planner plan
+   */
+  planner::AbstractPlan *OptimizerPlanToPlannerPlan(OpExpression plan);
 
   /* Optimize - produce the best plan for the given operator tree which has the
    * specified physical requirements
@@ -83,13 +85,13 @@ class Optimizer {
    *               must have
    * return: the best physical operator tree for the given group
    */
-  void OptimizeGroup(GroupID id, std::vector<Property> requirements);
+  void OptimizeGroup(GroupID id, PropertySet requirements);
 
   /*
    *
    */
   void OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
-                          std::vector<Property> requirements);
+                          PropertySet requirements);
 
   /* Explore - check the operator tree root for the given pattern
    *

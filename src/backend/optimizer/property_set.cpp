@@ -2,28 +2,26 @@
 //
 //                         Peloton
 //
-// property.h
+// property_set.cpp
 //
-// Identification: src/backend/optimizer/property.h
+// Identification: src/backend/optimizer/property_set.cpp
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#pragma once
+#include "backend/optimizer/property_set.h"
 
 namespace peloton {
 namespace optimizer {
 
-enum class PropertyType {
-  Sort,
-  Columns,
-};
+PropertySet::PropertySet() {
+}
 
-class Property {
- public:
-  
-};
+bool PropertySet::IsSubset(const PropertySet &r) {
+  (void) r;
+  return false;
+}
 
 } /* namespace optimizer */
 } /* namespace peloton */

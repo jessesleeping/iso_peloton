@@ -29,11 +29,10 @@ std::string QueryNodePrinter::print() {
 
 void QueryNodePrinter::visit(const Variable *op) {
   append("Variable: ");
-  append("tuple_index " + std::to_string(op->tuple_index));
-  append(", column_index " + std::to_string(op->column_index));
-  append(", base_table_oid " + std::to_string(op->base_table_oid));
-  append(", base_table_column_index " +
-         std::to_string(op->base_table_column_index));
+  append("base_table_oid " + std::to_string(op->base_table_oid));
+  append(", column_offset " +
+         std::to_string(op->column.GetOffset()));
+  append(", type " + ValueTypeToString(op->column.GetType()));
 }
 
 void QueryNodePrinter::visit(const Constant *op) {
@@ -76,14 +75,14 @@ void QueryNodePrinter::visit(const NotOperator *op) {
 }
 
 void QueryNodePrinter::visit(const Attribute *op) {
-  append("Attribute: ");
-  append("table_index " + std::to_string(op->table_index));
-  append(", ");
-  append("column_index " + std::to_string(op->column_index));
+  push_header("Attribute:  " + (op->name != "" ? op->name : "<NO_NAME>") +
+              std::string(op->intermediate ? "(intermediate)" : ""));
+  op->expression->accept(this);
+  pop();
 }
 
 void QueryNodePrinter::visit(const Table *op) {
-  append("Table: oid " + std::to_string(op->table_oid));
+  append("Table: oid " + std::to_string(op->data_table->GetOid()));
 }
 
 void QueryNodePrinter::visit(const Join *op) {

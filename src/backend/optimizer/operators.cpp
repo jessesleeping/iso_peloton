@@ -27,16 +27,21 @@ Operator LeafOperator::make(GroupID group) {
 //===--------------------------------------------------------------------===//
 // Get
 //===--------------------------------------------------------------------===//
-Operator LogicalGet::make(oid_t base_table, std::vector<Column *> columns) {
+
+Operator LogicalGet::make(storage::DataTable *table,
+                          std::vector<Column *> cols)
+{
   LogicalGet *get = new LogicalGet;
-  get->base_table = base_table;
-  get->columns = columns;
+  get->table = table;
+  get->columns = cols;
   return Operator(get);
 }
 
+
 hash_t LogicalGet::Hash() const {
   uint64_t hash = BaseOperatorNode::Hash();
-  hash = util::CombineHashes(hash, util::Hash<oid_t>(&base_table));
+  oid_t table_oid = table->GetOid();
+  hash = util::CombineHashes(hash, util::Hash<oid_t>(&table_oid));
   for (Column *col : columns) {
     hash = util::CombineHashes(hash, col->Hash());
   }

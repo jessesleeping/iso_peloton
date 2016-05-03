@@ -22,6 +22,9 @@ optimizer_FILES = \
 				backend/optimizer/rule_impls.cpp \
 				backend/optimizer/column.cpp \
 				backend/optimizer/column_manager.cpp \
+				backend/optimizer/property.cpp \
+				backend/optimizer/properties.cpp \
+				backend/optimizer/property_set.cpp \
 				backend/optimizer/util.cpp
 
 
