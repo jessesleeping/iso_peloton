@@ -45,6 +45,8 @@ class OperatorVisitor {
   virtual void visit(const ExprCompare*);
   virtual void visit(const ExprBoolOp*);
   virtual void visit(const ExprOp*);
+  virtual void visit(const ExprProjectList*);
+  virtual void visit(const ExprProjectColumn*);
 };
 
 } /* namespace optimizer */

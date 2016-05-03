@@ -35,7 +35,9 @@ class QueryTreeConverter : public QueryNodeVisitor {
     : manager(manager) {
   }
 
-  std::shared_ptr<OpExpression> ConvertToOpExpression(const Select *op) {
+  std::shared_ptr<OpExpression> ConvertToOpExpression(
+    std::shared_ptr<Select> op)
+  {
     op->accept(this);
     return output_expr;
   }
@@ -59,27 +61,60 @@ class QueryTreeConverter : public QueryNodeVisitor {
   }
 
   void visit(const Constant *op) override {
-    (void) op;
+    output_expr = std::make_shared<OpExpression>(ExprConstant::make(op->value));
   }
 
   void visit(const OperatorExpression *op) override {
-    (void) op;
+    auto expr = std::make_shared<OpExpression>(ExprOp::make(op->type));
+
+    for (QueryExpression *arg : op->args) {
+      arg->accept(this);
+      expr->PushChild(output_expr);
+    }
+
+    output_expr = expr;
   }
 
   void visit(const AndOperator *op) override {
-    (void) op;
+    auto expr =
+      std::make_shared<OpExpression>(ExprBoolOp::make(BoolOpType::And));
+
+    for (QueryExpression *arg : op->args) {
+      arg->accept(this);
+      expr->PushChild(output_expr);
+    }
+
+    output_expr = expr;
   }
 
   void visit(const OrOperator *op) override {
-    (void) op;
+    auto expr =
+      std::make_shared<OpExpression>(ExprBoolOp::make(BoolOpType::Or));
+
+    for (QueryExpression *arg : op->args) {
+      arg->accept(this);
+      expr->PushChild(output_expr);
+    }
+
+    output_expr = expr;
   }
 
   void visit(const NotOperator *op) override {
-    (void) op;
+    auto expr =
+      std::make_shared<OpExpression>(ExprBoolOp::make(BoolOpType::Not));
+
+    QueryExpression *arg = op->arg;
+    arg->accept(this);
+    expr->PushChild(output_expr);
+
+    output_expr = expr;
   }
 
   void visit(const Attribute *op) override {
-    (void) op;
+    auto expr =
+      std::make_shared<OpExpression>(ExprProjectColumn::make(op->name));
+    op->expression->accept(this);
+    expr->PushChild(output_expr);
   }
 
   void visit(const Table *op) override {
@@ -156,12 +191,21 @@ class QueryTreeConverter : public QueryNodeVisitor {
       output_expr->PushChild(expr);
       expr = output_expr;
     }
+
     // Add all attributes in output list as projection at top level
+    auto project_expr = std::make_shared<OpExpression>(LogicalProject::make());
+    project_expr->PushChild(expr);
+    auto project_list = std::make_shared<OpExpression>(ExprProjectList::make());
+    project_expr->PushChild(project_list);
     for (Attribute *attr : op->output_list) {
-      (void) attr;
+      // Ignore intermediate columns for output projection
+      if (!attr->intermediate) {
+        attr->accept(this);
+        project_list->PushChild(output_expr);
+      }
     }
 
-    output_expr = expr;
+    output_expr = project_expr;
   }
 
  private:
@@ -184,9 +228,10 @@ Optimizer &Optimizer::GetInstance()
 std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   std::shared_ptr<Select> select_tree)
 {
-  return nullptr;
   // Generate initial operator tree from query tree
   GroupID root_id = InsertQueryTree(select_tree);
+  printf("root id %d\n", root_id);
+  return nullptr;
 
   // Get the physical properties the final plan must output
   PropertySet properties =
@@ -205,8 +250,11 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
 }
 
 GroupID Optimizer::InsertQueryTree(std::shared_ptr<Select> tree) {
-  (void) tree;
-  return 0;
+  QueryTreeConverter converter(column_manager);
+  std::shared_ptr<OpExpression> initial = converter.ConvertToOpExpression(tree);
+  std::shared_ptr<GroupExpression> gexpr;
+  RecordTransformedExpression(initial, gexpr);
+  return gexpr->GetGroupID();
 }
 
 PropertySet Optimizer::GetQueryTreeRequiredProperties(

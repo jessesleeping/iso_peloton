@@ -40,6 +40,8 @@ class GroupExpression {
 
   hash_t Hash() const;
 
+  bool operator==(const GroupExpression &r);
+
  private:
   GroupID group_id;
   Operator op;

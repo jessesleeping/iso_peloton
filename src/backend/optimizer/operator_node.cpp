@@ -61,6 +61,15 @@ hash_t Operator::Hash() const {
   return 0;
 }
 
+bool Operator::operator==(const Operator &r) {
+  if (defined() && r.defined()) {
+    return *node == *r.node;
+  } else if (!defined() && !r.defined()) {
+    return true;
+  }
+  return false;
+}
+
 bool Operator::defined() const {
   return node != nullptr;
 }

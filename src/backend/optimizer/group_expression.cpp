@@ -50,5 +50,15 @@ hash_t GroupExpression::Hash() const {
   return hash;
 }
 
+bool GroupExpression::operator==(const GroupExpression &r) {
+  bool eq = (op == r.Op());
+
+  for (size_t i = 0; i < child_groups.size(); ++i) {
+    eq = eq && (child_groups[i] == r.child_groups[i]);
+  }
+
+  return eq;
+}
+
 } /* namespace optimizer */
 } /* namespace peloton */

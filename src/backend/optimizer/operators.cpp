@@ -191,17 +191,36 @@ Operator ExprCompare::make(ExpressionType type) {
 //===--------------------------------------------------------------------===//
 // Boolean Operation
 //===--------------------------------------------------------------------===//
-Operator ExprBoolOp::make() {
+Operator ExprBoolOp::make(BoolOpType type) {
   ExprBoolOp *bool_op = new ExprBoolOp;
+  bool_op->type = type;
   return Operator(bool_op);
 }
 
 //===--------------------------------------------------------------------===//
 // Operation (e.g. +, -, string functions)
 //===--------------------------------------------------------------------===//
-Operator ExprOp::make() {
+Operator ExprOp::make(ExpressionType type) {
   ExprOp *op = new ExprOp;
+  op->type = type;
   return Operator(op);
+}
+
+//===--------------------------------------------------------------------===//
+// ProjectList
+//===--------------------------------------------------------------------===//
+Operator ExprProjectList::make() {
+  ExprProjectList *list = new ExprProjectList;
+  return Operator(list);
+}
+
+//===--------------------------------------------------------------------===//
+// ProjectColumn
+//===--------------------------------------------------------------------===//
+Operator ExprProjectColumn::make(std::string name) {
+  ExprProjectColumn *col = new ExprProjectColumn;
+  col->name = name;
+  return Operator(col);
 }
 
 template<>
@@ -284,6 +303,14 @@ template<>
 void OperatorNode<ExprOp>::accept(OperatorVisitor *v) const {
   v->visit((const ExprOp *)this);
 }
+template<>
+void OperatorNode<ExprProjectList>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprProjectList *)this);
+}
+template<>
+void OperatorNode<ExprProjectColumn>::accept(OperatorVisitor *v) const {
+  v->visit((const ExprProjectColumn *)this);
+}
 
 template<>
 std::string OperatorNode<LeafOperator>::_name = "LeafOperator";
@@ -325,6 +352,10 @@ template<>
 std::string OperatorNode<ExprBoolOp>::_name = "ExprBoolOp";
 template<>
 std::string OperatorNode<ExprOp>::_name = "ExprOp";
+template<>
+std::string OperatorNode<ExprProjectList>::_name = "ExprProjectList";
+template<>
+std::string OperatorNode<ExprProjectColumn>::_name = "ExprProjectColumn";
 
 template<>
 OpType OperatorNode<LeafOperator>::_type = OpType::Leaf;
@@ -366,6 +397,10 @@ template<>
 OpType OperatorNode<ExprBoolOp>::_type = OpType::BoolOp;
 template<>
 OpType OperatorNode<ExprOp>::_type = OpType::Op;
+template<>
+OpType OperatorNode<ExprProjectList>::_type = OpType::ProjectList;
+template<>
+OpType OperatorNode<ExprProjectColumn>::_type = OpType::ProjectColumn;
 
 template<>
 bool OperatorNode<LeafOperator>::is_logical() const {
@@ -447,6 +482,14 @@ template<>
 bool OperatorNode<ExprOp>::is_logical() const {
   return true;
 }
+template<>
+bool OperatorNode<ExprProjectList>::is_logical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprProjectColumn>::is_logical() const {
+  return true;
+}
 
 template<>
 bool OperatorNode<LeafOperator>::is_physical() const {
@@ -526,6 +569,14 @@ bool OperatorNode<ExprBoolOp>::is_physical() const {
 }
 template<>
 bool OperatorNode<ExprOp>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprProjectList>::is_physical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprProjectColumn>::is_physical() const {
   return true;
 }
 

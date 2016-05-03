@@ -187,9 +187,17 @@ class ExprCompare : public OperatorNode<ExprCompare> {
 //===--------------------------------------------------------------------===//
 // Boolean Operation
 //===--------------------------------------------------------------------===//
+enum class BoolOpType {
+  Not,
+  And,
+  Or,
+};
+
 class ExprBoolOp : public OperatorNode<ExprBoolOp> {
  public:
-  static Operator make();
+  static Operator make(BoolOpType type);
+
+  BoolOpType type;
 };
 
 //===--------------------------------------------------------------------===//
@@ -197,8 +205,29 @@ class ExprBoolOp : public OperatorNode<ExprBoolOp> {
 //===--------------------------------------------------------------------===//
 class ExprOp : public OperatorNode<ExprOp> {
  public:
+  static Operator make(ExpressionType type);
+
+  ExpressionType type;
+};
+
+//===--------------------------------------------------------------------===//
+// ProjectList
+//===--------------------------------------------------------------------===//
+class ExprProjectList : public OperatorNode<ExprProjectList> {
+ public:
   static Operator make();
 };
+
+//===--------------------------------------------------------------------===//
+// ProjectColumn
+//===--------------------------------------------------------------------===//
+class ExprProjectColumn : public OperatorNode<ExprProjectColumn> {
+ public:
+  static Operator make(std::string name);
+
+  std::string name;
+};
+
 
 } /* namespace optimizer */
 } /* namespace peloton */

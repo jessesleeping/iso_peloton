@@ -79,5 +79,11 @@ void OperatorVisitor::visit(const ExprBoolOp*) {
 void OperatorVisitor::visit(const ExprOp*) {
 }
 
+void OperatorVisitor::visit(const ExprProjectList*) {
+}
+
+void OperatorVisitor::visit(const ExprProjectColumn*) {
+}
+
 } /* namespace optimizer */
 } /* namespace peloton */

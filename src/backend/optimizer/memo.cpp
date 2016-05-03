@@ -35,8 +35,9 @@ bool Memo::InsertExpression(std::shared_ptr<GroupExpression> gexpr,
   bool new_expression;
   if (it != group_expressions.end()) {
     new_expression = false;
-    assert(target_group != UNDEFINED_GROUP &&
+    assert(target_group == UNDEFINED_GROUP ||
            target_group == (*it)->GetGroupID());
+    gexpr->SetGroupID((*it)->GetGroupID());
   } else {
     new_expression = true;
     group_expressions.insert(gexpr.get());

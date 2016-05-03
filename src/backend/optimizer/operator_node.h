@@ -47,6 +47,8 @@ enum class OpType {
   Compare,
   BoolOp,
   Op,
+  ProjectList,
+  ProjectColumn,
 };
 
 //===--------------------------------------------------------------------===//
@@ -114,6 +116,8 @@ public:
   bool is_physical() const;
 
   hash_t Hash() const;
+
+  bool operator==(const Operator &r);
 
   bool defined() const;
 

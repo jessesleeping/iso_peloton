@@ -22,6 +22,20 @@
 namespace peloton {
 namespace optimizer {
 
+struct GExprPtrHash {
+  std::size_t operator()(GroupExpression * const& s) const {
+    return s->Hash();
+  }
+};
+
+struct GExprPtrEq {
+  bool operator() (GroupExpression * const& t1,
+                   GroupExpression * const& t2) const
+  {
+    return *t1 == *t2;
+  }
+};
+
 //===--------------------------------------------------------------------===//
 // Memo
 //===--------------------------------------------------------------------===//
@@ -48,7 +62,9 @@ class Memo {
  private:
   GroupID AddNewGroup();
 
-  std::unordered_set<GroupExpression *> group_expressions;
+  std::unordered_set<GroupExpression *,
+                     GExprPtrHash,
+                     GExprPtrEq> group_expressions;
   std::vector<Group> groups;
   std::map<std::vector<Property>, size_t> lowest_cost_items;
 };
