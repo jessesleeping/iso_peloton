@@ -189,18 +189,20 @@ class QueryToOpTransformer : public QueryNodeVisitor {
   void visit(const Select *op) override {
     // Add join tree op expression
     op->join_tree->accept(this);
-    std::shared_ptr<OpExpression> expr = output_expr;
+    std::shared_ptr<OpExpression> join_expr = output_expr;
 
     // Add filter for where predicate
     if (op->where_predicate) {
+      auto select_expr = std::make_shared<OpExpression>(LogicalSelect::make());
+      select_expr->PushChild(join_expr);
       op->where_predicate->accept(this);
-      output_expr->PushChild(expr);
-      expr = output_expr;
+      select_expr->PushChild(output_expr);
+      join_expr = select_expr;
     }
 
     // Add all attributes in output list as projection at top level
     auto project_expr = std::make_shared<OpExpression>(LogicalProject::make());
-    project_expr->PushChild(expr);
+    project_expr->PushChild(join_expr);
     auto project_list = std::make_shared<OpExpression>(ExprProjectList::make());
     project_expr->PushChild(project_list);
     for (Attribute *attr : op->output_list) {

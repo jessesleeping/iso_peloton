@@ -38,9 +38,9 @@ GroupBindingIterator::GroupBindingIterator(Optimizer &optimizer,
     pattern(pattern),
     target_group(memo.GetGroupByID(id)),
     num_group_items(target_group->GetExpressions().size()),
-    target_group_explored(target_group->GetExploredFlags()),
     current_item_index(0)
 {
+  LOG_TRACE("Attempting to bind on group %d", id);
   // We'd like to only explore rules which we know will produce a match of our
   // current pattern. However, because our rules don't currently expose the
   // structure of the output they produce after a transformation, we must be
@@ -48,16 +48,12 @@ GroupBindingIterator::GroupBindingIterator(Optimizer &optimizer,
   const std::vector<std::shared_ptr<GroupExpression>> gexprs =
     target_group->GetExpressions();
   for (size_t i = 0; i < num_group_items; ++i) {
-    if (!target_group_explored[i]) {
-      target_group->set_explored(i);
-      for (const Rule &rule : optimizer.rules) {
-        optimizer.ExploreExpression(gexprs[i], rule);
-      }
-    }
+    optimizer.ExploreExpression(gexprs[i]);
   }
 }
 
 bool GroupBindingIterator::HasNext() {
+  LOG_TRACE("HasNext");
   if (pattern->Type() == OpType::Leaf) {
     return current_item_index == 0;
   }
@@ -112,6 +108,8 @@ ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
     has_next(false),
     current_binding(std::make_shared<OpExpression>(gexpr->Op()))
 {
+  LOG_TRACE("Attempting to bind on group %d with expression of type %s",
+            gexpr->GetGroupID(), gexpr->Op().name().c_str());
   if (gexpr->Op().type() != pattern->Type()) return;
 
   const std::vector<GroupID> &child_groups = gexpr->ChildGroupIDs();
@@ -145,6 +143,7 @@ ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
 }
 
 bool ItemBindingIterator::HasNext() {
+  LOG_TRACE("HasNext");
   if (has_next && first) {
     first = false;
     return true;

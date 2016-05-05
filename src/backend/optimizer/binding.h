@@ -60,7 +60,6 @@ class GroupBindingIterator : public BindingIterator {
   std::shared_ptr<Pattern> pattern;
   Group *target_group;
   size_t num_group_items;
-  const std::vector<bool> &target_group_explored;
 
   size_t current_item_index;
   std::unique_ptr<BindingIterator> current_iterator;

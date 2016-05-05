@@ -50,17 +50,9 @@ std::shared_ptr<GroupExpression> Group::GetBestExpression(
   return nullptr;
 }
 
-void Group::set_explored(size_t item_index) {
-  explored_flags[item_index] = true;
-}
-
 const std::vector<std::shared_ptr<GroupExpression>>
 &Group::GetExpressions() const {
   return expressions;
-}
-
-const std::vector<bool> &Group::GetExploredFlags() const {
-  return explored_flags;
 }
 
 } /* namespace optimizer */

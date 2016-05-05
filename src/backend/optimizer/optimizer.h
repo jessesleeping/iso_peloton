@@ -43,7 +43,7 @@ class Optimizer {
   Optimizer(Optimizer &&) = delete;
   Optimizer &operator=(Optimizer &&) = delete;
 
-  Optimizer() {};
+  Optimizer();
 
   static Optimizer &GetInstance();
 
@@ -108,22 +108,17 @@ class Optimizer {
                       PropertySet requirements);
 
 
-  /* Explore - check the operator tree root for the given pattern
+  /* ExploreGroup - check the operator tree root for the given pattern
    *
    * root: an operator tree representing a query
-   * pattern: an operator tree representing a query
-   * return: the best physical plan which represents the given operator tree
    */
-  void ExploreGroup(GroupID id, const Rule &rule);
+  void ExploreGroup(GroupID id);
 
-  /* Explore - check the operator tree root for the given pattern
+  /* ExploreExpression - check the operator tree root for the given pattern
    *
    * root: an operator tree representing a query
-   * pattern: an operator tree representing a query
-   * return: the best physical plan which represents the given operator tree
    */
-  void ExploreExpression(std::shared_ptr<GroupExpression> gexpr,
-                         const Rule &rule);
+  void ExploreExpression(std::shared_ptr<GroupExpression> gexpr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Rule application
@@ -157,8 +152,9 @@ class Optimizer {
 
   Memo memo;
   ColumnManager column_manager;
-  std::vector<Rule> rules;
+  std::vector<std::unique_ptr<Rule>> rules;
 };
 
 } /* namespace optimizer */
 } /* namespace peloton */
+

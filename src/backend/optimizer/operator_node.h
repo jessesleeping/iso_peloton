@@ -129,6 +129,8 @@ public:
 
   std::vector<PropertySet> RequiredInputProperties() const;
 
+  PropertySet ProvidedOutputProperties() const;
+
   hash_t Hash() const;
 
   bool operator==(const Operator &r);

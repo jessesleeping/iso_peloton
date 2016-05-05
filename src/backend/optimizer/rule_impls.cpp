@@ -75,6 +75,12 @@ void GetToScan::Transform(
 /// ProjectToComputeExprs
 ProjectToComputeExprs::ProjectToComputeExprs() {
   physical = true;
+
+  std::shared_ptr<Pattern> child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> project_list(std::make_shared<Pattern>(OpType::Leaf));
+  match_pattern = std::make_shared<Pattern>(OpType::Project);
+  match_pattern->AddChild(child);
+  match_pattern->AddChild(project_list);
 }
 
 bool ProjectToComputeExprs::Check(std::shared_ptr<OpExpression> plan) const {
@@ -86,8 +92,14 @@ void ProjectToComputeExprs::Transform(
     std::shared_ptr<OpExpression> input,
     std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  auto result =
+    std::make_shared<OpExpression>(PhysicalComputeExprs::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 2);
+  result->PushChild(children[0]);
+  result->PushChild(children[1]);
+
+  transformed.push_back(result);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

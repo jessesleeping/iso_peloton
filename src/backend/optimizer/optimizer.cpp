@@ -13,6 +13,7 @@
 #include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/operator_visitor.h"
 #include "backend/optimizer/convert_query_to_op.h"
+#include "backend/optimizer/rule_impls.h"
 
 #include "backend/planner/projection_plan.h"
 #include "backend/planner/seq_scan_plan.h"
@@ -30,6 +31,11 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 // Optimizer
 //===--------------------------------------------------------------------===//
+Optimizer::Optimizer() {
+  rules.emplace_back(new InnerJoinCommutativity());
+  rules.emplace_back(new ProjectToComputeExprs());
+}
+
 Optimizer &Optimizer::GetInstance() {
   thread_local static Optimizer optimizer;
   return optimizer;
@@ -109,30 +115,37 @@ void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
                                    PropertySet requirements)
 {
   LOG_TRACE("Optimizing expression of group %d with op %s",
-            gexpr->GetGroupID(), gexpr->Op()->name().c_str());
-  // Apply all rules to operator which match. We apply all rules to one operator
-  // before moving on to the next operator in the group because then we avoid
-  // missing the application of a rule e.g. an application of some rule creates
-  // a match for a previously applied rule, but it is missed because the prev
-  // rule was already checked
-  for (const Rule &rule : rules) {
-    ExploreExpression(gexpr, rule);
-  }
-
+            gexpr->GetGroupID(), gexpr->Op().name().c_str());
   // Apply physical transformations and cost those which match the requirements
-  for (const Rule &rule : rules) {
-    if (!rule.IsPhysical()) continue;
-
+  for (const std::unique_ptr<Rule> &rule : rules) {
+    // Apply all rules to operator which match. We apply all rules to one operator
+    // before moving on to the next operator in the group because then we avoid
+    // missing the application of a rule e.g. an application of some rule creates
+    // a match for a previously applied rule, but it is missed because the prev
+    // rule was already checked
     std::vector<std::shared_ptr<GroupExpression>> candidates =
-      TransformExpression(gexpr, rule);
+      TransformExpression(gexpr, *(rule.get()));
 
     for (std::shared_ptr<GroupExpression> candidate : candidates) {
-      // Cost the expression
+      // If logical...
+      if (candidate->Op().IsLogical()) {
+        // Optimize the expression
+        OptimizeExpression(candidate, requirements);
+      }
+      if (candidate->Op().IsPhysical()) {
+        // Cost the expression
+        CostExpression(candidate, requirements);
 
-      // Ignore if it does not fulfill requirements
+        // Only include cost if it meets the property requirements
+        if (requirements.IsSubset(candidate->Op().ProvidedOutputProperties())) {
+          // Add to group as potential best cost
+          Group *group = memo.GetGroupByID(gexpr->GetGroupID());
+          group->SetExpressionCost(gexpr, gexpr->GetCost(), requirements);
+        }
+      }
+
     }
   }
-  (void)requirements;
 }
 
 void Optimizer::CostGroup(GroupID id, PropertySet requirements) {
@@ -147,24 +160,36 @@ void Optimizer::CostExpression(std::shared_ptr<GroupExpression> gexpr,
   (void) requirements;
 }
 
-void Optimizer::ExploreGroup(GroupID id, const Rule &rule) {
+void Optimizer::ExploreGroup(GroupID id) {
   LOG_TRACE("Exploring group %d", id);
-  // for (Operator op : group.GetOperators()) {
-  //   ExploreItem(op, rule);
-  // }
-  (void) id;
-  (void) rule;
+  for (std::shared_ptr<GroupExpression> gexpr :
+         memo.GetGroupByID(id)->GetExpressions())
+  {
+    ExploreExpression(gexpr);
+  }
 }
 
-void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr,
-                                  const Rule &rule)
-{
-  if (!rule.IsLogical()) return;
-
+void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr) {
   LOG_TRACE("Exploring expression of group %d with op %s",
-            gexpr->GetGroupID(), gexpr->Op()->name().c_str());
+            gexpr->GetGroupID(), gexpr->Op().name().c_str());
 
-  (void) TransformExpression(gexpr, rule);
+  for (const std::unique_ptr<Rule> &rule : rules) {
+    // Apply all rules to operator which match. We apply all rules to one operator
+    // before moving on to the next operator in the group because then we avoid
+    // missing the application of a rule e.g. an application of some rule creates
+    // a match for a previously applied rule, but it is missed because the prev
+    // rule was already checked
+    std::vector<std::shared_ptr<GroupExpression>> candidates =
+      TransformExpression(gexpr, *(rule.get()));
+
+    for (std::shared_ptr<GroupExpression> candidate : candidates) {
+      // If logical...
+      if (candidate->Op().IsLogical()) {
+        // Explore the expression
+        ExploreExpression(candidate);
+      }
+    }
+  }
 }
 
 
@@ -172,7 +197,7 @@ void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr,
 /// Rule application
 std::vector<std::shared_ptr<GroupExpression>>
 Optimizer::TransformExpression(std::shared_ptr<GroupExpression> gexpr,
-                                    const Rule &rule)
+                               const Rule &rule)
 {
   std::shared_ptr<Pattern> pattern = rule.GetMatchPattern();
 
@@ -182,6 +207,8 @@ Optimizer::TransformExpression(std::shared_ptr<GroupExpression> gexpr,
     std::shared_ptr<OpExpression> plan = iterator.Next();
     // Check rule condition function
     if (rule.Check(plan)) {
+      LOG_TRACE("Rule matched expression of group %d with op %s",
+                gexpr->GetGroupID(), gexpr->Op().name().c_str());
       // Apply rule transformations
       // We need to be able to analyze the transformations performed by this
       // rule in order to perform deduplication and launch an exploration of

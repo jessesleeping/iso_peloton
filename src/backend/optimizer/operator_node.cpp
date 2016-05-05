@@ -61,6 +61,13 @@ std::vector<PropertySet> Operator::RequiredInputProperties() const {
   return {};
 }
 
+PropertySet Operator::ProvidedOutputProperties() const {
+  if (defined()) {
+    return node->ProvidedOutputProperties();
+  }
+  return PropertySet();
+}
+
 hash_t Operator::Hash() const {
   if (defined()) {
     return node->Hash();

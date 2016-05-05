@@ -40,9 +40,12 @@ class GroupExpression {
 
   Operator Op() const;
 
-  std::tuple<std::shared_ptr<Stats>, double> DeriveStatsAndCost(
-    std::vector<std::shared_ptr<Stats>> child_stats,
-    std::vector<double> child_costs);
+  std::shared_ptr<Stats> GetStats() const;
+
+  double GetCost() const;
+
+  void DeriveStatsAndCost(std::vector<std::shared_ptr<Stats>> child_stats,
+                          std::vector<double> child_costs);
 
   hash_t Hash() const;
 
@@ -52,6 +55,9 @@ class GroupExpression {
   GroupID group_id;
   Operator op;
   std::vector<GroupID> child_groups;
+
+  std::shared_ptr<Stats> stats;
+  double cost;
 };
 
 } /* namespace optimizer */
