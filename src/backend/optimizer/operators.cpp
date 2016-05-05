@@ -27,7 +27,6 @@ Operator LeafOperator::make(GroupID group) {
 //===--------------------------------------------------------------------===//
 // Get
 //===--------------------------------------------------------------------===//
-
 Operator LogicalGet::make(storage::DataTable *table,
                           std::vector<Column *> cols)
 {

@@ -25,6 +25,25 @@
 namespace peloton {
 namespace optimizer {
 
+namespace {
+
+bool IsCompareOp(ExpressionType et) {
+  switch (et) {
+  case (EXPRESSION_TYPE_COMPARE_EQUAL):
+  case (EXPRESSION_TYPE_COMPARE_NOTEQUAL):
+  case (EXPRESSION_TYPE_COMPARE_LESSTHAN):
+  case (EXPRESSION_TYPE_COMPARE_GREATERTHAN):
+  case (EXPRESSION_TYPE_COMPARE_LESSTHANOREQUALTO):
+  case (EXPRESSION_TYPE_COMPARE_GREATERTHANOREQUALTO):
+  case (EXPRESSION_TYPE_COMPARE_LIKE):
+  case (EXPRESSION_TYPE_COMPARE_NOTLIKE):
+  case (EXPRESSION_TYPE_COMPARE_IN):
+    return true;
+  default:
+    return false;
+  }
+}
+
 class QueryToOpTransformer : public QueryNodeVisitor {
  public:
   QueryToOpTransformer(ColumnManager &manager)
@@ -66,7 +85,12 @@ class QueryToOpTransformer : public QueryNodeVisitor {
   }
 
   void visit(const OperatorExpression *op) override {
-    auto expr = std::make_shared<OpExpression>(ExprOp::make(op->type));
+    std::shared_ptr<OpExpression> expr;
+    if (IsCompareOp(op->type)) {
+      expr = std::make_shared<OpExpression>(ExprCompare::make(op->type));
+    } else {
+      expr = std::make_shared<OpExpression>(ExprOp::make(op->type));
+    }
 
     for (QueryExpression *arg : op->args) {
       arg->accept(this);
@@ -221,6 +245,8 @@ class QueryToOpTransformer : public QueryNodeVisitor {
 
   std::shared_ptr<OpExpression> output_expr;
 };
+
+}
 
 std::shared_ptr<OpExpression> ConvertQueryToOpExpression(
   ColumnManager &manager,

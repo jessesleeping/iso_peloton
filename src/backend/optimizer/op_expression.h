@@ -36,8 +36,6 @@ public:
 
   const std::vector<std::shared_ptr<OpExpression>> &Children() const;
 
-  void Accept(OpExpressionVisitor *v) const;
-
   const Operator &Op() const;
 
 private:

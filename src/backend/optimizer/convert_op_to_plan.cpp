@@ -14,7 +14,10 @@
 #include "backend/optimizer/operator_visitor.h"
 
 #include "backend/planner/hash_join_plan.h"
+#include "backend/planner/seq_scan_plan.h"
 #include "backend/planner/projection_plan.h"
+
+#include "backend/expression/expression_util.h"
 
 namespace peloton {
 namespace optimizer {
@@ -29,27 +32,99 @@ class ExprOpToAbstractExpressionTransformer : public OperatorVisitor {
   expression::AbstractExpression *ConvertOpExpression(
     std::shared_ptr<OpExpression> op)
   {
-    (void) op;
-    return nullptr;
+    VisitOpExpression(op);
+    return output_expr;
   }
 
-  void visit(const ExprVariable *) override {
+  void visit(const ExprVariable *var) override {
+    (void) var;
+    // TODO(abpoms): do this right
+    oid_t table_idx = 0;
+    oid_t column_idx = 0;
+    output_expr =
+      expression::ExpressionUtil::TupleValueFactory(table_idx, column_idx);
   }
 
-  void visit(const ExprConstant *) override {
+  void visit(const ExprConstant *op) override {
+    output_expr =
+      expression::ExpressionUtil::ConstantValueFactory(op->value);
   }
 
-  void visit(const ExprCompare *) override {
+  void visit(const ExprCompare *op) override {
+    auto children = current_children;
+    assert(children.size() == 2);
+
+    std::vector<expression::AbstractExpression *> child_exprs;
+    for (std::shared_ptr<OpExpression> child : children) {
+      VisitOpExpression(child);
+      child_exprs.push_back(output_expr);
+    }
+    child_exprs.resize(2, nullptr);
+
+    output_expr = expression::ExpressionUtil::ComparisonFactory(
+      op->expr_type, child_exprs[0], child_exprs[1]);
   }
 
-  void visit(const ExprBoolOp *) override {
+  void visit(const ExprBoolOp *op) override {
+    auto children = current_children;
+
+    std::list<expression::AbstractExpression *> child_exprs;
+    for (std::shared_ptr<OpExpression> child : children) {
+      VisitOpExpression(child);
+      child_exprs.push_back(output_expr);
+    }
+
+    switch (op->bool_type) {
+    case BoolOpType::Not: {
+      assert(children.size() == 1);
+      output_expr = expression::ExpressionUtil::OperatorFactory(
+        EXPRESSION_TYPE_OPERATOR_NOT, child_exprs.front(), nullptr);
+    } break;
+    case BoolOpType::And: {
+      assert(children.size() > 0);
+      output_expr = expression::ExpressionUtil::ConjunctionFactory(
+        EXPRESSION_TYPE_CONJUNCTION_AND, child_exprs);
+    } break;
+    case BoolOpType::Or: {
+      assert(children.size() > 0);
+      output_expr = expression::ExpressionUtil::ConjunctionFactory(
+        EXPRESSION_TYPE_CONJUNCTION_OR, child_exprs);
+    } break;
+    default: {
+      assert(false);
+    }
+    }
+    assert(output_expr != nullptr);
   }
 
-  void visit(const ExprOp *) override {
+  void visit(const ExprOp *op) override {
+    auto children = current_children;
+
+    std::vector<expression::AbstractExpression *> child_exprs;
+    for (std::shared_ptr<OpExpression> child : children) {
+      VisitOpExpression(child);
+      child_exprs.push_back(output_expr);
+    }
+    child_exprs.resize(4, nullptr);
+
+    output_expr = expression::ExpressionUtil::OperatorFactory(
+      op->expr_type,
+      child_exprs[0],
+      child_exprs[1],
+      child_exprs[2],
+      child_exprs[3]);
   }
 
  private:
+  void VisitOpExpression(std::shared_ptr<OpExpression> op) {
+    std::vector<std::shared_ptr<OpExpression>> prev_children = current_children;
+    current_children = op->Children();
+    op->Op().accept(this);
+    current_children = prev_children;
+  }
 
+  expression::AbstractExpression *output_expr;
+  std::vector<std::shared_ptr<OpExpression>> current_children;
 };
 
 class OpToPlanTransformer : public OperatorVisitor {
@@ -60,11 +135,19 @@ class OpToPlanTransformer : public OperatorVisitor {
   planner::AbstractPlan *ConvertOpExpression(
     std::shared_ptr<OpExpression> plan)
   {
-    plan->Op().accept(this);
+    VisitOpExpression(plan);
     return output_plan;
   }
 
-  void visit(const PhysicalScan *) override {
+  void visit(const PhysicalScan *op) override {
+    std::vector<oid_t> column_ids;
+    for (Column *col : op->columns) {
+      TableColumn *table_col = dynamic_cast<TableColumn *>(col);
+      assert(table_col != nullptr);
+      column_ids.push_back(table_col->ColumnIndexOid());
+    }
+
+    output_plan = new planner::SeqScanPlan(op->table, nullptr, column_ids);
   }
 
   void visit(const PhysicalComputeExprs *) override {
@@ -107,6 +190,17 @@ class OpToPlanTransformer : public OperatorVisitor {
   }
 
   void visit(const PhysicalFilter *) override {
+    auto children = current_children;
+    assert(children.size() == 2);
+
+    VisitOpExpression(children[0]);
+    planner::AbstractPlan *child_plan = output_plan;
+
+    expression::AbstractExpression *predicate =
+      ConvertOpExpressionToAbstractExpression(children[1]);
+
+    output_plan = new planner::SeqScanPlan(nullptr, predicate, {});
+    output_plan->AddChild(child_plan);
   }
 
   void visit(const PhysicalInnerHashJoin *) override {

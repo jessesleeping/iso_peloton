@@ -38,10 +38,6 @@ const std::vector<std::shared_ptr<OpExpression>>
   return children;
 }
 
-void OpExpression::Accept(OpExpressionVisitor *v) const {
-  (void)v;
-}
-
 const Operator &OpExpression::Op() const {
   return op;
 }

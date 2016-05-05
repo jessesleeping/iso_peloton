@@ -34,6 +34,8 @@ class Column {
          std::string name,
          bool inlined);
 
+  virtual ~Column() {}
+
   ColumnID ID() const;
 
   ValueType Type() const;

@@ -13,6 +13,7 @@
 #include "backend/optimizer/optimizer.h"
 #include "backend/optimizer/operator_visitor.h"
 #include "backend/optimizer/convert_query_to_op.h"
+#include "backend/optimizer/convert_op_to_plan.h"
 #include "backend/optimizer/rule_impls.h"
 
 #include "backend/planner/projection_plan.h"
@@ -58,6 +59,8 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
 
   std::shared_ptr<OpExpression> best_plan = ChooseBestPlan(root_id, properties);
 
+  if (best_plan == nullptr) return nullptr;
+
   planner::AbstractPlan* top_plan = OptimizerPlanToPlannerPlan(best_plan);
 
   std::shared_ptr<planner::AbstractPlan> final_plan(
@@ -86,8 +89,7 @@ PropertySet Optimizer::GetQueryTreeRequiredProperties(
 planner::AbstractPlan *Optimizer::OptimizerPlanToPlannerPlan(
   std::shared_ptr<OpExpression> plan)
 {
-  (void) plan;
-  return nullptr;
+  return ConvertOpExpressionToPlan(plan);
 }
 
 std::shared_ptr<OpExpression> Optimizer::ChooseBestPlan(
@@ -100,7 +102,23 @@ std::shared_ptr<OpExpression> Optimizer::ChooseBestPlan(
   std::shared_ptr<GroupExpression> gexpr =
     group->GetBestExpression(requirements);
 
-  return nullptr;
+  std::vector<GroupID> child_groups = gexpr->GetChildGroupIDs();
+  std::vector<PropertySet> required_input_props =
+    gexpr->Op().RequiredInputProperties();
+  if (required_input_props.empty()) {
+    required_input_props.resize(child_groups.size(), PropertySet());
+  }
+
+  std::shared_ptr<OpExpression> op =
+    std::make_shared<OpExpression>(gexpr->Op());
+
+  for (size_t i = 0; i < child_groups.size(); ++i) {
+    std::shared_ptr<OpExpression> child_op =
+      ChooseBestPlan(child_groups[i], required_input_props[i]);
+    op->PushChild(child_op);
+  }
+
+  return op;
 }
 
 void Optimizer::OptimizeGroup(GroupID id, PropertySet requirements) {
