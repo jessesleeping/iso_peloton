@@ -40,18 +40,25 @@ OpType Operator::type() const {
   return OpType::Undefined;
 }
 
-bool Operator::is_logical() const {
+bool Operator::IsLogical() const {
   if (defined()) {
-    return node->is_logical();
+    return node->IsLogical();
   }
   return false;
 }
 
-bool Operator::is_physical() const {
+bool Operator::IsPhysical() const {
   if (defined()) {
-    return node->is_physical();
+    return node->IsPhysical();
   }
   return false;
+}
+
+std::vector<PropertySet> Operator::RequiredInputProperties() const {
+  if (defined()) {
+    return node->RequiredInputProperties();
+  }
+  return {};
 }
 
 hash_t Operator::Hash() const {

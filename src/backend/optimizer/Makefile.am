@@ -9,6 +9,7 @@ optimizer_FILES = \
 				backend/optimizer/query_transformer.cpp \
 				backend/optimizer/optimizer.cpp \
 				backend/optimizer/convert_query_to_op.cpp \
+				backend/optimizer/convert_op_to_plan.cpp \
 				backend/optimizer/operator_node.cpp \
 				backend/optimizer/query_operators.cpp \
 				backend/optimizer/query_node_printer.cpp \
@@ -26,6 +27,8 @@ optimizer_FILES = \
 				backend/optimizer/property.cpp \
 				backend/optimizer/properties.cpp \
 				backend/optimizer/property_set.cpp \
+				backend/optimizer/stats.cpp \
+				backend/optimizer/tuple_sample.cpp \
 				backend/optimizer/util.cpp
 
 

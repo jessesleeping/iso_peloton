@@ -35,6 +35,12 @@ class Group {
 
   void AddExpression(std::shared_ptr<GroupExpression> expr);
 
+  void SetExpressionCost(std::shared_ptr<GroupExpression> expr,
+                         double cost,
+                         PropertySet properties);
+
+  std::shared_ptr<GroupExpression> GetBestExpression(PropertySet properties);
+
   void set_explored(size_t item_index);
 
   const std::vector<std::shared_ptr<GroupExpression>> &GetExpressions() const;
@@ -45,7 +51,7 @@ class Group {
   GroupID id;
   std::vector<std::shared_ptr<GroupExpression>> expressions;
   std::vector<bool> explored_flags;
-  std::map<std::vector<Property>, size_t> lowest_cost_items;
+  std::map<PropertySet, size_t> lowest_cost_items;
 };
 
 } /* namespace optimizer */

@@ -58,9 +58,9 @@ class LogicalProject : public OperatorNode<LogicalProject> {
 };
 
 //===--------------------------------------------------------------------===//
-// Filter
+// Select
 //===--------------------------------------------------------------------===//
-class LogicalFilter : public OperatorNode<LogicalFilter> {
+class LogicalSelect : public OperatorNode<LogicalSelect> {
  public:
   static Operator make();
 };
@@ -118,14 +118,30 @@ class LogicalLimit : public OperatorNode<LogicalLimit> {
 //===--------------------------------------------------------------------===//
 class PhysicalScan : public OperatorNode<PhysicalScan> {
  public:
-  static Operator make(oid_t base_table, std::vector<Column *> columns);
+  static Operator make(storage::DataTable *table, std::vector<Column *> cols);
 
   bool operator==(const BaseOperatorNode &r) override;
 
   hash_t Hash() const override;
 
-  oid_t base_table;
+  storage::DataTable *table;
   std::vector<Column *> columns;
+};
+
+//===--------------------------------------------------------------------===//
+// ComputeExprs
+//===--------------------------------------------------------------------===//
+class PhysicalComputeExprs : public OperatorNode<PhysicalComputeExprs> {
+ public:
+  static Operator make();
+};
+
+//===--------------------------------------------------------------------===//
+// Filter
+//===--------------------------------------------------------------------===//
+class PhysicalFilter : public OperatorNode<PhysicalFilter> {
+ public:
+  static Operator make();
 };
 
 //===--------------------------------------------------------------------===//
@@ -249,13 +265,13 @@ class ExprProjectList : public OperatorNode<ExprProjectList> {
 //===--------------------------------------------------------------------===//
 class ExprProjectColumn : public OperatorNode<ExprProjectColumn> {
  public:
-  static Operator make(std::string name);
+  static Operator make(Column *column);
 
   bool operator==(const BaseOperatorNode &r) override;
 
   hash_t Hash() const override;
 
-  std::string name;
+  Column *column;
 };
 
 

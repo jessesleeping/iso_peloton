@@ -40,6 +40,15 @@ Operator GroupExpression::Op() const {
   return op;
 }
 
+std::tuple<std::shared_ptr<Stats>, double> GroupExpression::DeriveStatsAndCost(
+  std::vector<std::shared_ptr<Stats>> child_stats,
+  std::vector<double> child_costs)
+{
+  (void) child_stats;
+  (void) child_costs;
+  return std::make_tuple(std::shared_ptr<Stats>(nullptr), 0.0);
+}
+
 hash_t GroupExpression::Hash() const {
   size_t hash = op.Hash();
 

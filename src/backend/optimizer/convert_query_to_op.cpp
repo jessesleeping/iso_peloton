@@ -44,13 +44,18 @@ class QueryToOpTransformer : public QueryNodeVisitor {
         bridge::Bridge::GetCurrentDatabaseOid(), op->base_table_oid));
     catalog::Column schema_col = op->column;
 
-    Column *col = manager.LookupColumn(data_table->GetOid(),
-                                       schema_col.GetOffset());
+    oid_t table_oid = data_table->GetOid();
+    oid_t col_id = schema_col.GetOffset();
+    assert(col_id != INVALID_OID);
+
+    Column *col = manager.LookupColumn(table_oid, col_id);
     if (col == nullptr) {
-      col = manager.AddColumn(schema_col.GetName(),
-                              data_table->GetOid(),
-                              schema_col.GetOffset(),
-                              schema_col.GetType());
+      col = manager.AddBaseColumn(schema_col.GetType(),
+                                  schema_col.GetLength(),
+                                  schema_col.GetName(),
+                                  schema_col.IsInlined(),
+                                  table_oid,
+                                  col_id);
     }
 
     output_expr = std::make_shared<OpExpression>(ExprVariable::make(col));
@@ -107,10 +112,16 @@ class QueryToOpTransformer : public QueryNodeVisitor {
   }
 
   void visit(const Attribute *op) override {
-    auto expr =
-      std::make_shared<OpExpression>(ExprProjectColumn::make(op->name));
     op->expression->accept(this);
+
+    // TODO(abpoms): actually figure out what the type should be by deriving
+    // it from the expression tree
+    Column *col =
+      manager.AddExprColumn(VALUE_TYPE_NULL, 0, op->name, true);
+    auto expr = std::make_shared<OpExpression>(ExprProjectColumn::make(col));
     expr->PushChild(output_expr);
+
+    output_expr = expr;
   }
 
   void visit(const Table *op) override {
@@ -119,17 +130,16 @@ class QueryToOpTransformer : public QueryNodeVisitor {
     storage::DataTable *table = op->data_table;
     catalog::Schema *schema = table->GetSchema();
     oid_t table_oid = table->GetOid();
-    for (oid_t column_id = 0;
-         column_id < schema->GetColumnCount();
-         column_id++)
-    {
-      catalog::Column schema_col = schema->GetColumn(column_id);
-      Column *col = manager.LookupColumn(table_oid, column_id);
+    for (oid_t col_id = 0; col_id < schema->GetColumnCount(); col_id++) {
+      catalog::Column schema_col = schema->GetColumn(col_id);
+      Column *col = manager.LookupColumn(table_oid, col_id);
       if (col == nullptr) {
-        col = manager.AddColumn(schema_col.GetName(),
-                                table_oid,
-                                column_id,
-                                schema_col.GetType());
+        col = manager.AddBaseColumn(schema_col.GetType(),
+                                    schema_col.GetLength(),
+                                    schema_col.GetName(),
+                                    schema_col.IsInlined(),
+                                    table_oid,
+                                    col_id);
       }
       columns.push_back(col);
     }

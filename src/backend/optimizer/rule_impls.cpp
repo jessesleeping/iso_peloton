@@ -18,7 +18,11 @@
 namespace peloton {
 namespace optimizer {
 
+///////////////////////////////////////////////////////////////////////////////
+/// InnerJoinCommutativity
 InnerJoinCommutativity::InnerJoinCommutativity() {
+  logical = true;
+
   std::shared_ptr<Pattern> left_child(std::make_shared<Pattern>(OpType::Leaf));
   std::shared_ptr<Pattern> right_child(std::make_shared<Pattern>(OpType::Leaf));
   match_pattern = std::make_shared<Pattern>(OpType::InnerJoin);
@@ -46,6 +50,139 @@ void InnerJoinCommutativity::Transform(
   result_plan->PushChild(children[2]);
 
   transformed.push_back(result_plan);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// GetToScan
+GetToScan::GetToScan() {
+  physical = true;
+}
+
+bool GetToScan::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void GetToScan::Transform(
+  std::shared_ptr<OpExpression> input,
+  std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// ProjectToComputeExprs
+ProjectToComputeExprs::ProjectToComputeExprs() {
+  physical = true;
+}
+
+bool ProjectToComputeExprs::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void ProjectToComputeExprs::Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// SelectToFilter
+SelectToFilter::SelectToFilter() {
+  physical = true;
+}
+
+bool SelectToFilter::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void SelectToFilter::Transform(
+  std::shared_ptr<OpExpression> input,
+  std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// InnerJoinToInnerHashJoin
+InnerJoinToInnerHashJoin::InnerJoinToInnerHashJoin() {
+  physical = true;
+}
+
+bool InnerJoinToInnerHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void InnerJoinToInnerHashJoin::Transform(
+  std::shared_ptr<OpExpression> input,
+  std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// LeftJoinToLeftHashJoin
+LeftJoinToLeftHashJoin::LeftJoinToLeftHashJoin() {
+  physical = true;
+}
+
+bool LeftJoinToLeftHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void LeftJoinToLeftHashJoin::Transform(
+  std::shared_ptr<OpExpression> input,
+  std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// RightJoinToRightHashJoin
+RightJoinToRightHashJoin::RightJoinToRightHashJoin() {
+  physical = true;
+}
+
+bool RightJoinToRightHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void RightJoinToRightHashJoin::Transform(
+  std::shared_ptr<OpExpression> input,
+  std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// OuterJoinToOuterHashJoin
+OuterJoinToOuterHashJoin::OuterJoinToOuterHashJoin() {
+  physical = true;
+}
+
+bool OuterJoinToOuterHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
+  (void) plan;
+  return true;
+}
+
+void OuterJoinToOuterHashJoin::Transform(
+  std::shared_ptr<OpExpression> input,
+  std::vector<std::shared_ptr<OpExpression>> &transformed) const
+{
+  (void) input;
+  (void) transformed;
 }
 
 } /* namespace optimizer */

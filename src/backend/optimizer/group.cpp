@@ -26,6 +26,22 @@ void Group::AddExpression(std::shared_ptr<GroupExpression> expr) {
   expressions.push_back(expr);
 }
 
+void Group::SetExpressionCost(std::shared_ptr<GroupExpression> expr,
+                              double cost,
+                              PropertySet properties)
+{
+  (void) expr;
+  (void) cost;
+  (void) properties;
+}
+
+std::shared_ptr<GroupExpression> Group::GetBestExpression(
+  PropertySet properties)
+{
+  (void) properties;
+  return nullptr;
+}
+
 void Group::set_explored(size_t item_index) {
   explored_flags[item_index] = true;
 }

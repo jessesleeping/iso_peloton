@@ -19,9 +19,102 @@
 namespace peloton {
 namespace optimizer {
 
+///////////////////////////////////////////////////////////////////////////////
+/// InnerJoinCommutativity
 class InnerJoinCommutativity : public Rule {
  public:
   InnerJoinCommutativity();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// GetToScan
+class GetToScan : public Rule {
+ public:
+  GetToScan();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// ProjectToComputeExprs
+class ProjectToComputeExprs : public Rule {
+ public:
+  ProjectToComputeExprs();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// SelectToFilter
+class SelectToFilter : public Rule {
+ public:
+  SelectToFilter();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// InnerJoinToInnerHashJoin
+class InnerJoinToInnerHashJoin : public Rule {
+ public:
+  InnerJoinToInnerHashJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// LeftJoinToLeftHashJoin
+class LeftJoinToLeftHashJoin : public Rule {
+ public:
+  LeftJoinToLeftHashJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// RightJoinToRightHashJoin
+class RightJoinToRightHashJoin : public Rule {
+ public:
+  RightJoinToRightHashJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// OuterJoinToOuterHashJoin
+class OuterJoinToOuterHashJoin : public Rule {
+ public:
+  OuterJoinToOuterHashJoin();
 
   bool Check(std::shared_ptr<OpExpression> plan) const override;
 

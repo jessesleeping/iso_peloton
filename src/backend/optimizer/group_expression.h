@@ -13,8 +13,10 @@
 #pragma once
 
 #include "backend/optimizer/operator_node.h"
+#include "backend/optimizer/stats.h"
 #include "backend/optimizer/util.h"
 
+#include <tuple>
 #include <vector>
 #include <map>
 
@@ -37,6 +39,10 @@ class GroupExpression {
   const std::vector<GroupID> &ChildGroupIDs() const;
 
   Operator Op() const;
+
+  std::tuple<std::shared_ptr<Stats>, double> DeriveStatsAndCost(
+    std::vector<std::shared_ptr<Stats>> child_stats,
+    std::vector<double> child_costs);
 
   hash_t Hash() const;
 

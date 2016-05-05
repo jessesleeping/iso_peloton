@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include "backend/optimizer/property_set.h"
 #include "backend/optimizer/util.h"
 
 #include <string>
@@ -28,7 +29,7 @@ enum class OpType {
   // Logical ops
   Get,
   Project,
-  Filter,
+  Select,
   InnerJoin,
   LeftJoin,
   RightJoin,
@@ -37,6 +38,8 @@ enum class OpType {
   Limit,
   // Physical ops
   Scan,
+  ComputeExprs,
+  Filter,
   InnerHashJoin,
   LeftHashJoin,
   RightHashJoin,
@@ -67,18 +70,27 @@ struct BaseOperatorNode {
 
   virtual OpType type() const = 0;
 
-  virtual bool is_logical() const = 0;
+  virtual bool IsLogical() const = 0;
 
-  virtual bool is_physical() const = 0;
+  virtual bool IsPhysical() const = 0;
 
-  virtual bool operator==(const BaseOperatorNode &r) {
-    return type() == r.type();
+  virtual std::vector<PropertySet> RequiredInputProperties() const {
+    return {};
+  }
+
+  virtual PropertySet ProvidedOutputProperties() const {
+    return PropertySet();
   }
 
   virtual hash_t Hash() const {
     OpType t = type();
     return util::Hash(&t);
   }
+
+  virtual bool operator==(const BaseOperatorNode &r) {
+    return type() == r.type();
+  }
+
 };
 
 // Curiously recurring template pattern
@@ -90,9 +102,9 @@ struct OperatorNode : public BaseOperatorNode {
 
   OpType type() const { return _type; }
 
-  bool is_logical() const;
+  bool IsLogical() const;
 
-  bool is_physical() const;
+  bool IsPhysical() const;
 
   static std::string _name;
 
@@ -111,9 +123,11 @@ public:
 
   OpType type() const;
 
-  bool is_logical() const;
+  bool IsLogical() const;
 
-  bool is_physical() const;
+  bool IsPhysical() const;
+
+  std::vector<PropertySet> RequiredInputProperties() const;
 
   hash_t Hash() const;
 

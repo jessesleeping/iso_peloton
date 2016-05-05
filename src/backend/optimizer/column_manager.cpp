@@ -40,16 +40,39 @@ Column *ColumnManager::LookupColumnByID(ColumnID id) {
   return id_to_column.at(id);
 }
 
-Column *ColumnManager::AddColumn(std::string name,
-                                 oid_t base_table,
-                                 oid_t column_index,
-                                 ValueType type)
+Column *ColumnManager::AddBaseColumn(ValueType type,
+                                     int size,
+                                     std::string name,
+                                     bool inlined,
+                                     oid_t base_table,
+                                     oid_t column_index)
 {
-  Column *col =
-    new Column(next_column_id++, name, base_table, column_index, type);
+  Column *col = new TableColumn(next_column_id++,
+                                type,
+                                size,
+                                name,
+                                inlined,
+                                base_table,
+                                column_index);
 
   auto key = std::make_tuple(base_table, column_index);
   table_col_index_to_column.insert(std::pair<decltype(key), Column*>(key, col));
+  id_to_column.insert(std::pair<ColumnID, Column *>(col->ID(), col));
+  columns.push_back(col);
+  return col;
+}
+
+Column *ColumnManager::AddExprColumn(ValueType type,
+                                     int size,
+                                     std::string name,
+                                     bool inlined)
+{
+  Column *col = new ExprColumn(next_column_id++,
+                               type,
+                               size,
+                               name,
+                               inlined);
+
   id_to_column.insert(std::pair<ColumnID, Column *>(col->ID(), col));
   columns.push_back(col);
   return col;

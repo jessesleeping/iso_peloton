@@ -28,7 +28,7 @@ void OperatorVisitor::visit(const LogicalGet*) {
 void OperatorVisitor::visit(const LogicalProject*) {
 }
 
-void OperatorVisitor::visit(const LogicalFilter*) {
+void OperatorVisitor::visit(const LogicalSelect*) {
 }
 
 void OperatorVisitor::visit(const LogicalInnerJoin*) {
@@ -50,6 +50,12 @@ void OperatorVisitor::visit(const LogicalLimit*) {
 }
 
 void OperatorVisitor::visit(const PhysicalScan*) {
+}
+
+void OperatorVisitor::visit(const PhysicalComputeExprs*) {
+}
+
+void OperatorVisitor::visit(const PhysicalFilter*) {
 }
 
 void OperatorVisitor::visit(const PhysicalInnerHashJoin*) {

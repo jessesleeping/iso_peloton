@@ -58,7 +58,8 @@ class Optimizer {
    * tree: a peloton query tree representing a select query
    * return: the group id of the root of the tree
    */
-  GroupID InsertQueryTree(std::shared_ptr<Select> tree);
+  std::shared_ptr<GroupExpression> InsertQueryTree(
+    std::shared_ptr<Select> tree);
 
   /* GetQueryTreeRequiredProperties - get the required physical properties for
    * a peloton query tree.
@@ -75,10 +76,18 @@ class Optimizer {
    * plan: an optimizer plan composed soley of physical operators
    * return: the corresponding planner plan
    */
-  planner::AbstractPlan *OptimizerPlanToPlannerPlan(OpExpression plan);
+  planner::AbstractPlan *OptimizerPlanToPlannerPlan(
+    std::shared_ptr<OpExpression> plan);
 
-  /* Optimize - produce the best plan for the given operator tree which has the
-   * specified physical requirements
+  /* ChooseBestPlan - retrieve the lowest cost plan for the given requirements
+   * for the given group
+   *
+   */
+  std::shared_ptr<OpExpression> ChooseBestPlan(GroupID id,
+                                               PropertySet requirements);
+
+  /* OptimizeGroup - produce the best plan for the given operator tree which has
+   *  the specified physical requirements
    *
    * root: a group to optimize
    * requirements: the set of requirements the returned operato tree
@@ -92,6 +101,12 @@ class Optimizer {
    */
   void OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
                           PropertySet requirements);
+
+  void CostGroup(GroupID id, PropertySet requirements);
+
+  void CostExpression(std::shared_ptr<GroupExpression> gexpr,
+                      PropertySet requirements);
+
 
   /* Explore - check the operator tree root for the given pattern
    *

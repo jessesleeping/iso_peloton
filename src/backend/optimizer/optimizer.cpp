@@ -27,15 +27,10 @@
 namespace peloton {
 namespace optimizer {
 
-namespace {
-
-}
-
 //===--------------------------------------------------------------------===//
 // Optimizer
 //===--------------------------------------------------------------------===//
-Optimizer &Optimizer::GetInstance()
-{
+Optimizer &Optimizer::GetInstance() {
   thread_local static Optimizer optimizer;
   return optimizer;
 }
@@ -44,17 +39,18 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   std::shared_ptr<Select> select_tree)
 {
   // Generate initial operator tree from query tree
-  GroupID root_id = InsertQueryTree(select_tree);
+  std::shared_ptr<GroupExpression> gexpr = InsertQueryTree(select_tree);
+  GroupID root_id = gexpr->GetGroupID();
 
   // Get the physical properties the final plan must output
-  PropertySet properties =
-    GetQueryTreeRequiredProperties(select_tree);
+  PropertySet properties = GetQueryTreeRequiredProperties(select_tree);
 
   // Find least cost plan for root group
-  OptimizeGroup(root_id, properties);
-  OpExpression optimizer_plan(LogicalInnerJoin::make());
+  OptimizeExpression(gexpr, properties);
 
-  planner::AbstractPlan* top_plan = OptimizerPlanToPlannerPlan(optimizer_plan);
+  std::shared_ptr<OpExpression> best_plan = ChooseBestPlan(root_id, properties);
+
+  planner::AbstractPlan* top_plan = OptimizerPlanToPlannerPlan(best_plan);
 
   std::shared_ptr<planner::AbstractPlan> final_plan(
     top_plan, bridge::PlanTransformer::CleanPlan);
@@ -62,12 +58,14 @@ std::shared_ptr<planner::AbstractPlan> Optimizer::GeneratePlan(
   return final_plan;
 }
 
-GroupID Optimizer::InsertQueryTree(std::shared_ptr<Select> tree) {
+std::shared_ptr<GroupExpression> Optimizer::InsertQueryTree(
+  std::shared_ptr<Select> tree)
+{
   std::shared_ptr<OpExpression> initial =
     ConvertQueryToOpExpression(column_manager, tree);
   std::shared_ptr<GroupExpression> gexpr;
-  RecordTransformedExpression(initial, gexpr);
-  return gexpr->GetGroupID();
+  assert(RecordTransformedExpression(initial, gexpr));
+  return gexpr;
 }
 
 PropertySet Optimizer::GetQueryTreeRequiredProperties(
@@ -78,26 +76,40 @@ PropertySet Optimizer::GetQueryTreeRequiredProperties(
 }
 
 planner::AbstractPlan *Optimizer::OptimizerPlanToPlannerPlan(
-  OpExpression plan)
+  std::shared_ptr<OpExpression> plan)
 {
   (void) plan;
   return nullptr;
 }
 
+std::shared_ptr<OpExpression> Optimizer::ChooseBestPlan(
+  GroupID id,
+  PropertySet requirements)
+{
+  LOG_TRACE("Choosing best plan for group %d", id);
+
+  Group *group = memo.GetGroupByID(id);
+  std::shared_ptr<GroupExpression> gexpr =
+    group->GetBestExpression(requirements);
+
+  return nullptr;
+}
+
 void Optimizer::OptimizeGroup(GroupID id, PropertySet requirements) {
+  LOG_TRACE("Optimizing group %d", id);
   Group *group = memo.GetGroupByID(id);
   const std::vector<std::shared_ptr<GroupExpression>> exprs =
     group->GetExpressions();
   for (size_t i = 0; i < exprs.size(); ++i) {
     OptimizeExpression(exprs[i], requirements);
   }
-
-  // Choose best from group
 }
 
 void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
                                    PropertySet requirements)
 {
+  LOG_TRACE("Optimizing expression of group %d with op %s",
+            gexpr->GetGroupID(), gexpr->Op()->name().c_str());
   // Apply all rules to operator which match. We apply all rules to one operator
   // before moving on to the next operator in the group because then we avoid
   // missing the application of a rule e.g. an application of some rule creates
@@ -115,13 +127,28 @@ void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
       TransformExpression(gexpr, rule);
 
     for (std::shared_ptr<GroupExpression> candidate : candidates) {
+      // Cost the expression
+
       // Ignore if it does not fulfill requirements
     }
   }
   (void)requirements;
 }
 
+void Optimizer::CostGroup(GroupID id, PropertySet requirements) {
+  (void) id;
+  (void) requirements;
+}
+
+void Optimizer::CostExpression(std::shared_ptr<GroupExpression> gexpr,
+                               PropertySet requirements)
+{
+  (void) gexpr;
+  (void) requirements;
+}
+
 void Optimizer::ExploreGroup(GroupID id, const Rule &rule) {
+  LOG_TRACE("Exploring group %d", id);
   // for (Operator op : group.GetOperators()) {
   //   ExploreItem(op, rule);
   // }
@@ -133,6 +160,9 @@ void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr,
                                   const Rule &rule)
 {
   if (!rule.IsLogical()) return;
+
+  LOG_TRACE("Exploring expression of group %d with op %s",
+            gexpr->GetGroupID(), gexpr->Op()->name().c_str());
 
   (void) TransformExpression(gexpr, rule);
 }

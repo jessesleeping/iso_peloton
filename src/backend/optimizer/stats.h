@@ -2,26 +2,31 @@
 //
 //                         Peloton
 //
-// property_set.cpp
+// stats.h
 //
-// Identification: src/backend/optimizer/property_set.cpp
+// Identification: src/backend/optimizer/stats.h
 //
 // Copyright (c) 2015-16, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#include "backend/optimizer/property_set.h"
+#pragma once
+
+#include "backend/optimizer/tuple_sample.h"
 
 namespace peloton {
 namespace optimizer {
 
-PropertySet::PropertySet() {
-}
+//===--------------------------------------------------------------------===//
+// Stats
+//===--------------------------------------------------------------------===//
+class Stats {
+ public:
+  Stats(TupleSample *sample);
 
-bool PropertySet::IsSubset(const PropertySet &r) {
-  (void) r;
-  return true;
-}
+ private:
+  TupleSample *sample;
+};
 
 } /* namespace optimizer */
 } /* namespace peloton */

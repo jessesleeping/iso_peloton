@@ -68,11 +68,11 @@ Operator LogicalProject::make() {
 }
 
 //===--------------------------------------------------------------------===//
-// Filter
+// Select
 //===--------------------------------------------------------------------===//
-Operator LogicalFilter::make() {
-  LogicalFilter *filter = new LogicalFilter;
-  return Operator(filter);
+Operator LogicalSelect::make() {
+  LogicalSelect *select = new LogicalSelect;
+  return Operator(select);
 }
 
 //===--------------------------------------------------------------------===//
@@ -129,17 +129,19 @@ Operator LogicalLimit::make() {
 //===--------------------------------------------------------------------===//
 // Scan
 //===--------------------------------------------------------------------===//
-Operator PhysicalScan::make(oid_t base_table, std::vector<Column *> columns) {
-  PhysicalScan *get = new PhysicalScan;
-  get->base_table = base_table;
-  get->columns = columns;
-  return Operator(get);
+Operator PhysicalScan::make(storage::DataTable *table,
+                            std::vector<Column *> cols)
+{
+  PhysicalScan *scan = new PhysicalScan;
+  scan->table = table;
+  scan->columns = cols;
+  return Operator(scan);
 }
 
 bool PhysicalScan::operator==(const BaseOperatorNode &node) {
   if (node.type() != OpType::Scan) return false;
   const PhysicalScan &r = *static_cast<const PhysicalScan *>(&node);
-  if (base_table != r.base_table) return false;
+  if (table->GetOid() != r.table->GetOid()) return false;
   if (columns.size() != r.columns.size()) return false;
 
   for (size_t i = 0; i < columns.size(); ++i) {
@@ -150,11 +152,28 @@ bool PhysicalScan::operator==(const BaseOperatorNode &node) {
 
 hash_t PhysicalScan::Hash() const {
   hash_t hash = BaseOperatorNode::Hash();
-  hash = util::CombineHashes(hash, util::Hash<oid_t>(&base_table));
+  oid_t table_oid = table->GetOid();
+  hash = util::CombineHashes(hash, util::Hash<oid_t>(&table_oid));
   for (Column *col : columns) {
     hash = util::CombineHashes(hash, col->Hash());
   }
   return hash;
+}
+
+//===--------------------------------------------------------------------===//
+// ComputeExprs
+//===--------------------------------------------------------------------===//
+Operator PhysicalComputeExprs::make() {
+  PhysicalComputeExprs *compute = new PhysicalComputeExprs;
+  return Operator(compute);
+}
+
+//===--------------------------------------------------------------------===//
+// Filter
+//===--------------------------------------------------------------------===//
+Operator PhysicalFilter::make() {
+  PhysicalFilter *filter = new PhysicalFilter;
+  return Operator(filter);
 }
 
 //===--------------------------------------------------------------------===//
@@ -314,22 +333,22 @@ Operator ExprProjectList::make() {
 //===--------------------------------------------------------------------===//
 // ProjectColumn
 //===--------------------------------------------------------------------===//
-Operator ExprProjectColumn::make(std::string name) {
-  ExprProjectColumn *col = new ExprProjectColumn;
-  col->name = name;
-  return Operator(col);
+Operator ExprProjectColumn::make(Column *column) {
+  ExprProjectColumn *project_col = new ExprProjectColumn;
+  project_col->column = column;
+  return Operator(project_col);
 }
 
 bool ExprProjectColumn::operator==(const BaseOperatorNode &node) {
   if (node.type() != OpType::ProjectColumn) return false;
   const ExprProjectColumn &r = *static_cast<const ExprProjectColumn *>(&node);
-  if (name != r.name) return false;
+  if (column != r.column) return false;
   return true;
 }
 
 hash_t ExprProjectColumn::Hash() const {
   hash_t hash = BaseOperatorNode::Hash();
-  hash = util::CombineHashes(hash, util::HashBytes(name.data(), name.size()));
+  hash = util::CombineHashes(hash, column->Hash());
   return hash;
 }
 
@@ -348,8 +367,8 @@ void OperatorNode<LogicalProject>::accept(OperatorVisitor *v) const {
   v->visit((const LogicalProject *)this);
 }
 template<>
-void OperatorNode<LogicalFilter>::accept(OperatorVisitor *v) const {
-  v->visit((const LogicalFilter *)this);
+void OperatorNode<LogicalSelect>::accept(OperatorVisitor *v) const {
+  v->visit((const LogicalSelect *)this);
 }
 template<>
 void OperatorNode<LogicalInnerJoin>::accept(OperatorVisitor *v) const {
@@ -378,6 +397,14 @@ void OperatorNode<LogicalLimit>::accept(OperatorVisitor *v) const {
 template<>
 void OperatorNode<PhysicalScan>::accept(OperatorVisitor *v) const {
   v->visit((const PhysicalScan *)this);
+}
+template<>
+void OperatorNode<PhysicalComputeExprs>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalComputeExprs *)this);
+}
+template<>
+void OperatorNode<PhysicalFilter>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalFilter *)this);
 }
 template<>
 void OperatorNode<PhysicalInnerHashJoin>::accept(OperatorVisitor *v) const {
@@ -431,7 +458,7 @@ std::string OperatorNode<LogicalGet>::_name = "LogicalGet";
 template<>
 std::string OperatorNode<LogicalProject>::_name = "LogicalProject";
 template<>
-std::string OperatorNode<LogicalFilter>::_name = "LogicalFilter";
+std::string OperatorNode<LogicalSelect>::_name = "LogicalSelect";
 template<>
 std::string OperatorNode<LogicalInnerJoin>::_name = "LogicalInnerJoin";
 template<>
@@ -446,6 +473,10 @@ template<>
 std::string OperatorNode<LogicalLimit>::_name = "LogicalLimit";
 template<>
 std::string OperatorNode<PhysicalScan>::_name = "PhysicalScan";
+template<>
+std::string OperatorNode<PhysicalComputeExprs>::_name = "PhysicalComputeExprs";
+template<>
+std::string OperatorNode<PhysicalFilter>::_name = "PhysicalFilter";
 template<>
 std::string OperatorNode<PhysicalInnerHashJoin>::_name = "PhysicalInnerHashJoin";
 template<>
@@ -476,7 +507,7 @@ OpType OperatorNode<LogicalGet>::_type = OpType::Get;
 template<>
 OpType OperatorNode<LogicalProject>::_type = OpType::Project;
 template<>
-OpType OperatorNode<LogicalFilter>::_type = OpType::Filter;
+OpType OperatorNode<LogicalSelect>::_type = OpType::Select;
 template<>
 OpType OperatorNode<LogicalInnerJoin>::_type = OpType::InnerJoin;
 template<>
@@ -491,6 +522,10 @@ template<>
 OpType OperatorNode<LogicalLimit>::_type = OpType::Limit;
 template<>
 OpType OperatorNode<PhysicalScan>::_type = OpType::Scan;
+template<>
+OpType OperatorNode<PhysicalComputeExprs>::_type = OpType::ComputeExprs;
+template<>
+OpType OperatorNode<PhysicalFilter>::_type = OpType::Filter;
 template<>
 OpType OperatorNode<PhysicalInnerHashJoin>::_type = OpType::InnerHashJoin;
 template<>
@@ -515,180 +550,196 @@ template<>
 OpType OperatorNode<ExprProjectColumn>::_type = OpType::ProjectColumn;
 
 template<>
-bool OperatorNode<LeafOperator>::is_logical() const {
+bool OperatorNode<LeafOperator>::IsLogical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalGet>::is_logical() const {
+bool OperatorNode<LogicalGet>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalProject>::is_logical() const {
+bool OperatorNode<LogicalProject>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalFilter>::is_logical() const {
+bool OperatorNode<LogicalSelect>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalInnerJoin>::is_logical() const {
+bool OperatorNode<LogicalInnerJoin>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalLeftJoin>::is_logical() const {
+bool OperatorNode<LogicalLeftJoin>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalRightJoin>::is_logical() const {
+bool OperatorNode<LogicalRightJoin>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalOuterJoin>::is_logical() const {
+bool OperatorNode<LogicalOuterJoin>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalAggregate>::is_logical() const {
+bool OperatorNode<LogicalAggregate>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<LogicalLimit>::is_logical() const {
+bool OperatorNode<LogicalLimit>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<PhysicalScan>::is_logical() const {
+bool OperatorNode<PhysicalScan>::IsLogical() const {
   return false;
 }
 template<>
-bool OperatorNode<PhysicalInnerHashJoin>::is_logical() const {
+bool OperatorNode<PhysicalComputeExprs>::IsLogical() const {
   return false;
 }
 template<>
-bool OperatorNode<PhysicalLeftHashJoin>::is_logical() const {
+bool OperatorNode<PhysicalFilter>::IsLogical() const {
   return false;
 }
 template<>
-bool OperatorNode<PhysicalRightHashJoin>::is_logical() const {
+bool OperatorNode<PhysicalInnerHashJoin>::IsLogical() const {
   return false;
 }
 template<>
-bool OperatorNode<PhysicalOuterHashJoin>::is_logical() const {
+bool OperatorNode<PhysicalLeftHashJoin>::IsLogical() const {
   return false;
 }
 template<>
-bool OperatorNode<ExprVariable>::is_logical() const {
+bool OperatorNode<PhysicalRightHashJoin>::IsLogical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalOuterHashJoin>::IsLogical() const {
+  return false;
+}
+template<>
+bool OperatorNode<ExprVariable>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprConstant>::is_logical() const {
+bool OperatorNode<ExprConstant>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprCompare>::is_logical() const {
+bool OperatorNode<ExprCompare>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprBoolOp>::is_logical() const {
+bool OperatorNode<ExprBoolOp>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprOp>::is_logical() const {
+bool OperatorNode<ExprOp>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprProjectList>::is_logical() const {
+bool OperatorNode<ExprProjectList>::IsLogical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprProjectColumn>::is_logical() const {
+bool OperatorNode<ExprProjectColumn>::IsLogical() const {
   return true;
 }
 
 template<>
-bool OperatorNode<LeafOperator>::is_physical() const {
+bool OperatorNode<LeafOperator>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalGet>::is_physical() const {
+bool OperatorNode<LogicalGet>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalProject>::is_physical() const {
+bool OperatorNode<LogicalProject>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalFilter>::is_physical() const {
+bool OperatorNode<LogicalSelect>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalInnerJoin>::is_physical() const {
+bool OperatorNode<LogicalInnerJoin>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalLeftJoin>::is_physical() const {
+bool OperatorNode<LogicalLeftJoin>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalRightJoin>::is_physical() const {
+bool OperatorNode<LogicalRightJoin>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalOuterJoin>::is_physical() const {
+bool OperatorNode<LogicalOuterJoin>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalAggregate>::is_physical() const {
+bool OperatorNode<LogicalAggregate>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<LogicalLimit>::is_physical() const {
+bool OperatorNode<LogicalLimit>::IsPhysical() const {
   return false;
 }
 template<>
-bool OperatorNode<PhysicalScan>::is_physical() const {
+bool OperatorNode<PhysicalScan>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<PhysicalInnerHashJoin>::is_physical() const {
+bool OperatorNode<PhysicalComputeExprs>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<PhysicalLeftHashJoin>::is_physical() const {
+bool OperatorNode<PhysicalFilter>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<PhysicalRightHashJoin>::is_physical() const {
+bool OperatorNode<PhysicalInnerHashJoin>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<PhysicalOuterHashJoin>::is_physical() const {
+bool OperatorNode<PhysicalLeftHashJoin>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprVariable>::is_physical() const {
+bool OperatorNode<PhysicalRightHashJoin>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprConstant>::is_physical() const {
+bool OperatorNode<PhysicalOuterHashJoin>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprCompare>::is_physical() const {
+bool OperatorNode<ExprVariable>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprBoolOp>::is_physical() const {
+bool OperatorNode<ExprConstant>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprOp>::is_physical() const {
+bool OperatorNode<ExprCompare>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprProjectList>::is_physical() const {
+bool OperatorNode<ExprBoolOp>::IsPhysical() const {
   return true;
 }
 template<>
-bool OperatorNode<ExprProjectColumn>::is_physical() const {
+bool OperatorNode<ExprOp>::IsPhysical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprProjectList>::IsPhysical() const {
+  return true;
+}
+template<>
+bool OperatorNode<ExprProjectColumn>::IsPhysical() const {
   return true;
 }
 
