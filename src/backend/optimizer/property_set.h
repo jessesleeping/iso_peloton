@@ -13,8 +13,10 @@
 #pragma once
 
 #include "backend/optimizer/property.h"
+#include "backend/optimizer/util.h"
 
 #include <vector>
+#include <memory>
 
 namespace peloton {
 namespace optimizer {
@@ -25,9 +27,25 @@ class PropertySet {
 
   bool IsSubset(const PropertySet &r);
 
+  hash_t Hash() const;
+
+  bool operator==(const PropertySet &r);
+
  private:
-  std::vector<Property> properties;
+  std::vector<std::shared_ptr<Property>> properties;
 };
 
 } /* namespace optimizer */
 } /* namespace peloton */
+
+namespace std {
+
+template<> struct hash<peloton::optimizer::PropertySet> {
+  typedef peloton::optimizer::PropertySet argument_type;
+  typedef std::size_t result_type;
+  result_type operator()(argument_type const& s) const {
+    return s.Hash();
+  }
+};
+
+}

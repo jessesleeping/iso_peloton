@@ -17,7 +17,7 @@
 #include "backend/optimizer/group_expression.h"
 
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 namespace peloton {
 namespace optimizer {
@@ -51,7 +51,9 @@ class Group {
   GroupID id;
   std::vector<std::shared_ptr<GroupExpression>> expressions;
   std::vector<bool> explored_flags;
-  std::map<PropertySet, size_t> lowest_cost_items;
+  std::unordered_map<PropertySet,
+                     std::tuple<double, std::shared_ptr<GroupExpression>>>
+    lowest_cost_expressions;
 };
 
 } /* namespace optimizer */

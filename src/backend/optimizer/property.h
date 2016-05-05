@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "backend/optimizer/util.h"
+
 namespace peloton {
 namespace optimizer {
 
@@ -22,7 +24,10 @@ enum class PropertyType {
 
 class Property {
  public:
-  
+  virtual hash_t Hash() const = 0;
+
+  virtual bool operator==(const Property &r) const = 0;
+
 };
 
 } /* namespace optimizer */
