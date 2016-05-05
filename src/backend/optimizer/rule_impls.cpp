@@ -56,6 +56,8 @@ void InnerJoinCommutativity::Transform(
 /// GetToScan
 GetToScan::GetToScan() {
   physical = true;
+
+  match_pattern = std::make_shared<Pattern>(OpType::Get);
 }
 
 bool GetToScan::Check(std::shared_ptr<OpExpression> plan) const {
@@ -67,8 +69,12 @@ void GetToScan::Transform(
   std::shared_ptr<OpExpression> input,
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  const LogicalGet *get = input->Op().as<LogicalGet>();
+
+  auto result_plan = std::make_shared<OpExpression>(
+    PhysicalScan::make(get->table, get->columns));
+
+  transformed.push_back(result_plan);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -77,7 +83,8 @@ ProjectToComputeExprs::ProjectToComputeExprs() {
   physical = true;
 
   std::shared_ptr<Pattern> child(std::make_shared<Pattern>(OpType::Leaf));
-  std::shared_ptr<Pattern> project_list(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> project_list(
+    std::make_shared<Pattern>(OpType::Leaf));
   match_pattern = std::make_shared<Pattern>(OpType::Project);
   match_pattern->AddChild(child);
   match_pattern->AddChild(project_list);
@@ -106,6 +113,12 @@ void ProjectToComputeExprs::Transform(
 /// SelectToFilter
 SelectToFilter::SelectToFilter() {
   physical = true;
+
+  std::shared_ptr<Pattern> child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> predicate(std::make_shared<Pattern>(OpType::Leaf));
+  match_pattern = std::make_shared<Pattern>(OpType::Select);
+  match_pattern->AddChild(child);
+  match_pattern->AddChild(predicate);
 }
 
 bool SelectToFilter::Check(std::shared_ptr<OpExpression> plan) const {
@@ -117,8 +130,14 @@ void SelectToFilter::Transform(
   std::shared_ptr<OpExpression> input,
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  auto result =
+    std::make_shared<OpExpression>(PhysicalFilter::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 2);
+  result->PushChild(children[0]);
+  result->PushChild(children[1]);
+
+  transformed.push_back(result);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

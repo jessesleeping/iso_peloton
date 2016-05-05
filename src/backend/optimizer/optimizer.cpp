@@ -33,6 +33,8 @@ namespace optimizer {
 //===--------------------------------------------------------------------===//
 Optimizer::Optimizer() {
   rules.emplace_back(new InnerJoinCommutativity());
+  rules.emplace_back(new GetToScan());
+  rules.emplace_back(new SelectToFilter());
   rules.emplace_back(new ProjectToComputeExprs());
 }
 
@@ -116,13 +118,13 @@ void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
 {
   LOG_TRACE("Optimizing expression of group %d with op %s",
             gexpr->GetGroupID(), gexpr->Op().name().c_str());
-  // Apply physical transformations and cost those which match the requirements
+  // Apply transformations and cost those which match the requirements
   for (const std::unique_ptr<Rule> &rule : rules) {
-    // Apply all rules to operator which match. We apply all rules to one operator
-    // before moving on to the next operator in the group because then we avoid
-    // missing the application of a rule e.g. an application of some rule creates
-    // a match for a previously applied rule, but it is missed because the prev
-    // rule was already checked
+    // Apply all rules to operator which match. We apply all rules to one
+    // operator before moving on to the next operator in the group because then
+    // we avoid missing the application of a rule e.g. an application of some
+    // rule creates a match for a previously applied rule, but it is missed
+    // because the prev rule was already checked
     std::vector<std::shared_ptr<GroupExpression>> candidates =
       TransformExpression(gexpr, *(rule.get()));
 
@@ -139,25 +141,77 @@ void Optimizer::OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
         // Only include cost if it meets the property requirements
         if (requirements.IsSubset(candidate->Op().ProvidedOutputProperties())) {
           // Add to group as potential best cost
-          Group *group = memo.GetGroupByID(gexpr->GetGroupID());
-          group->SetExpressionCost(gexpr, gexpr->GetCost(), requirements);
+          Group *group = memo.GetGroupByID(candidate->GetGroupID());
+          LOG_TRACE("Adding expression cost on group %d with op %s",
+                    candidate->GetGroupID(), candidate->Op().name().c_str());
+          group->SetExpressionCost(candidate,
+                                   candidate->GetCost(),
+                                   requirements);
         }
       }
+    }
+  }
 
+  // Cost the expression
+  if (gexpr->Op().IsPhysical()) {
+    CostExpression(gexpr, requirements);
+
+    // Only include cost if it meets the property requirements
+    if (requirements.IsSubset(gexpr->Op().ProvidedOutputProperties())) {
+      // Add to group as potential best cost
+      Group *group = memo.GetGroupByID(gexpr->GetGroupID());
+      LOG_TRACE("Adding expression cost on group %d with op %s",
+                gexpr->GetGroupID(), gexpr->Op().name().c_str());
+      group->SetExpressionCost(gexpr,
+                               gexpr->GetCost(),
+                               requirements);
     }
   }
 }
 
 void Optimizer::CostGroup(GroupID id, PropertySet requirements) {
-  (void) id;
-  (void) requirements;
+  LOG_TRACE("Costing group %d", id);
+  for (std::shared_ptr<GroupExpression> gexpr :
+         memo.GetGroupByID(id)->GetExpressions())
+  {
+    CostExpression(gexpr, requirements);
+  }
 }
 
 void Optimizer::CostExpression(std::shared_ptr<GroupExpression> gexpr,
                                PropertySet requirements)
 {
-  (void) gexpr;
-  (void) requirements;
+  LOG_TRACE("Costing expression of group %d with op %s",
+            gexpr->GetGroupID(), gexpr->Op().name().c_str());
+  // Get required properties of children
+  std::vector<PropertySet> required_child_properties =
+    gexpr->Op().RequiredInputProperties();
+  std::vector<GroupID> child_group_ids =
+    gexpr->GetChildGroupIDs();
+
+  if (required_child_properties.empty()) {
+    required_child_properties.resize(child_group_ids.size(), PropertySet());
+  }
+
+  std::vector<std::shared_ptr<GroupExpression>> best_child_expressions;
+  std::vector<std::shared_ptr<Stats>> best_child_stats;
+  std::vector<double> best_child_costs;
+  for (size_t i = 0; i < child_group_ids.size(); ++i) {
+    // Optimize child
+    OptimizeGroup(child_group_ids[i], required_child_properties[i]);
+    // Find best child expression
+    std::shared_ptr<GroupExpression> best_expression =
+      memo.GetGroupByID(child_group_ids[i])->GetBestExpression(requirements);
+    // TODO(abpoms): we should allow for failure in the case where no expression
+    // can provide the required properties
+    assert(best_expression != nullptr);
+    best_child_expressions.push_back(best_expression);
+    best_child_stats.push_back(best_expression->GetStats());
+    best_child_costs.push_back(best_expression->GetCost());
+  }
+
+  // Perform costing
+  gexpr->DeriveStatsAndCost(best_child_stats, best_child_costs);
 }
 
 void Optimizer::ExploreGroup(GroupID id) {
@@ -174,11 +228,7 @@ void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr) {
             gexpr->GetGroupID(), gexpr->Op().name().c_str());
 
   for (const std::unique_ptr<Rule> &rule : rules) {
-    // Apply all rules to operator which match. We apply all rules to one operator
-    // before moving on to the next operator in the group because then we avoid
-    // missing the application of a rule e.g. an application of some rule creates
-    // a match for a previously applied rule, but it is missed because the prev
-    // rule was already checked
+    // See comment in OptimizeExpression
     std::vector<std::shared_ptr<GroupExpression>> candidates =
       TransformExpression(gexpr, *(rule.get()));
 
@@ -218,13 +268,19 @@ Optimizer::TransformExpression(std::shared_ptr<GroupExpression> gexpr,
 
       // Integrate transformed plans back into groups and explore/cost if new
       for (std::shared_ptr<OpExpression> plan : transformed_plans) {
-        std::shared_ptr<GroupExpression> gexpr;
-        bool new_expression = RecordTransformedExpression(plan, gexpr);
+        LOG_TRACE("Trying to integrate expression with op %s",
+                  plan->Op().name().c_str());
+        std::shared_ptr<GroupExpression> new_gexpr;
+        bool new_expression =
+          RecordTransformedExpression(plan, new_gexpr, gexpr->GetGroupID());
         // Should keep exploring this new expression with the current rule
         // but because we do exhaustive search anyway right now we do not
         // gain much from doing so, so don't
         if (new_expression) {
-          output_plans.push_back(gexpr);
+          LOG_TRACE("Expression with op %s was inserted into group %d",
+                    plan->Op().name().c_str(),
+                    new_gexpr->GetGroupID());
+          output_plans.push_back(new_gexpr);
         }
       }
     }
@@ -266,8 +322,16 @@ bool Optimizer::RecordTransformedExpression(
   std::shared_ptr<OpExpression> expr,
   std::shared_ptr<GroupExpression> &gexpr)
 {
+  return RecordTransformedExpression(expr, gexpr, UNDEFINED_GROUP);
+}
+
+bool Optimizer::RecordTransformedExpression(
+  std::shared_ptr<OpExpression> expr,
+  std::shared_ptr<GroupExpression> &gexpr,
+  GroupID target_group)
+{
   gexpr = MakeGroupExpression(expr);
-  return memo.InsertExpression(gexpr);
+  return memo.InsertExpression(gexpr, target_group);
 }
 
 }  // namespace optimizer

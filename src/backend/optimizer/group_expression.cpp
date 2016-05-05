@@ -32,7 +32,7 @@ void GroupExpression::SetGroupID(GroupID id) {
   group_id = id;
 }
 
-const std::vector<GroupID> &GroupExpression::ChildGroupIDs() const {
+const std::vector<GroupID> &GroupExpression::GetChildGroupIDs() const {
   return child_groups;
 }
 

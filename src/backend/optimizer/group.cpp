@@ -46,7 +46,10 @@ void Group::SetExpressionCost(std::shared_ptr<GroupExpression> expr,
 std::shared_ptr<GroupExpression> Group::GetBestExpression(
   PropertySet properties)
 {
-  (void) properties;
+  auto it = lowest_cost_expressions.find(properties);
+  if (it != lowest_cost_expressions.end()) {
+    return std::get<1>(it->second);
+  }
   return nullptr;
 }
 

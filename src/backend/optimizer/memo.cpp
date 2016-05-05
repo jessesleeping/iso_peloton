@@ -12,6 +12,8 @@
 
 #include "backend/optimizer/memo.h"
 
+#include "backend/optimizer/operators.h"
+
 #include <cassert>
 
 namespace peloton {
@@ -29,6 +31,15 @@ bool Memo::InsertExpression(std::shared_ptr<GroupExpression> gexpr) {
 bool Memo::InsertExpression(std::shared_ptr<GroupExpression> gexpr,
                             GroupID target_group)
 {
+  // If leaf, then just return
+  if (gexpr->Op().type() == OpType::Leaf) {
+    const LeafOperator *leaf = gexpr->Op().as<LeafOperator>();
+    assert(target_group == UNDEFINED_GROUP ||
+           target_group == leaf->origin_group);
+    gexpr->SetGroupID(leaf->origin_group);
+    return false;
+  }
+
   // Lookup in hash table
   auto it = group_expressions.find(gexpr.get());
 

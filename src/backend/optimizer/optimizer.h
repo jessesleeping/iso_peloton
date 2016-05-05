@@ -140,6 +140,10 @@ class Optimizer {
   bool RecordTransformedExpression(std::shared_ptr<OpExpression> expr,
                                    std::shared_ptr<GroupExpression> &gexpr);
 
+  bool RecordTransformedExpression(std::shared_ptr<OpExpression> expr,
+                                   std::shared_ptr<GroupExpression> &gexpr,
+                                   GroupID target_group);
+
   /* TransformOperator - apply the given rule to the operator tree root to
    * generate a logically equivalent operator tree or a physical implementation
    * of the operator depending on the type of rule
@@ -157,4 +161,3 @@ class Optimizer {
 
 } /* namespace optimizer */
 } /* namespace peloton */
-

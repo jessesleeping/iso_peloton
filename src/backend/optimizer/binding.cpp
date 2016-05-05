@@ -112,7 +112,7 @@ ItemBindingIterator::ItemBindingIterator(Optimizer &optimizer,
             gexpr->GetGroupID(), gexpr->Op().name().c_str());
   if (gexpr->Op().type() != pattern->Type()) return;
 
-  const std::vector<GroupID> &child_groups = gexpr->ChildGroupIDs();
+  const std::vector<GroupID> &child_groups = gexpr->GetChildGroupIDs();
   const std::vector<std::shared_ptr<Pattern>> &child_patterns =
     pattern->Children();
 

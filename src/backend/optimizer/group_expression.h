@@ -36,7 +36,7 @@ class GroupExpression {
 
   void SetGroupID(GroupID group_id);
 
-  const std::vector<GroupID> &ChildGroupIDs() const;
+  const std::vector<GroupID> &GetChildGroupIDs() const;
 
   Operator Op() const;
 
