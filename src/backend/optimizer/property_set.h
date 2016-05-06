@@ -25,6 +25,10 @@ class PropertySet {
  public:
   PropertySet();
 
+  const std::vector<std::shared_ptr<Property>> &Properties() const;
+
+  const std::shared_ptr<Property> GetPropertyOfType(PropertyType type) const;
+
   bool IsSubset(const PropertySet &r);
 
   hash_t Hash() const;

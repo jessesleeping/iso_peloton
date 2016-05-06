@@ -18,6 +18,21 @@ namespace optimizer {
 PropertySet::PropertySet() {
 }
 
+const std::vector<std::shared_ptr<Property>> &PropertySet::Properties() const {
+  return properties;
+}
+
+const std::shared_ptr<Property> PropertySet::GetPropertyOfType(
+  PropertyType type) const
+{
+  for (auto &prop : properties) {
+    if (prop->Type() == type) {
+      return prop;
+    }
+  }
+  return nullptr;
+}
+
 bool PropertySet::IsSubset(const PropertySet &r) {
   (void) r;
   return true;

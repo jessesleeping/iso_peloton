@@ -26,7 +26,10 @@ namespace {
 
 class ExprOpToAbstractExpressionTransformer : public OperatorVisitor {
  public:
-  ExprOpToAbstractExpressionTransformer() {
+  ExprOpToAbstractExpressionTransformer(
+    const std::vector<Column *> &left_columns,
+    const std::vector<Column *> &right_columns)
+    : left_columns(left_columns), right_columns(right_columns) {
   }
 
   expression::AbstractExpression *ConvertOpExpression(
@@ -37,10 +40,23 @@ class ExprOpToAbstractExpressionTransformer : public OperatorVisitor {
   }
 
   void visit(const ExprVariable *var) override {
-    (void) var;
-    // TODO(abpoms): do this right
-    oid_t table_idx = 0;
-    oid_t column_idx = 0;
+    assert(!(left_columns.empty() && right_columns.empty()));
+    oid_t table_idx = INVALID_OID;
+    oid_t column_idx = INVALID_OID;
+    for (size_t i = 0; i < left_columns.size(); ++i) {
+      if (var->column->ID() == left_columns[i]->ID()) {
+        table_idx = 0;
+        column_idx = i;
+        break;
+      }
+    }
+    for (size_t i = 0; i < right_columns.size(); ++i) {
+      if (var->column->ID() == right_columns[i]->ID()) {
+        table_idx = 1;
+        column_idx = i;
+        break;
+      }
+    }
     output_expr =
       expression::ExpressionUtil::TupleValueFactory(table_idx, column_idx);
   }
@@ -125,6 +141,8 @@ class ExprOpToAbstractExpressionTransformer : public OperatorVisitor {
 
   expression::AbstractExpression *output_expr;
   std::vector<std::shared_ptr<OpExpression>> current_children;
+  std::vector<Column *> left_columns;
+  std::vector<Column *> right_columns;
 };
 
 class OpToPlanTransformer : public OperatorVisitor {
@@ -146,7 +164,9 @@ class OpToPlanTransformer : public OperatorVisitor {
       assert(table_col != nullptr);
       column_ids.push_back(table_col->ColumnIndexOid());
     }
+    left_columns = op->columns;
 
+    output_columns = op->columns;
     output_plan = new planner::SeqScanPlan(op->table, nullptr, column_ids);
   }
 
@@ -156,7 +176,9 @@ class OpToPlanTransformer : public OperatorVisitor {
 
     VisitOpExpression(children[0]);
     planner::AbstractPlan *child_plan = output_plan;
+    left_columns = output_columns;
 
+    std::vector<Column *> proj_columns;
     catalog::Schema *project_schema = nullptr;
     planner::ProjectInfo::TargetList target_list;
     {
@@ -169,11 +191,12 @@ class OpToPlanTransformer : public OperatorVisitor {
 
         const ExprProjectColumn *proj_col =
           op_expr->Op().as<ExprProjectColumn>();
-        Column *column = proj_col->column;;
+        Column *column = proj_col->column;
+        proj_columns.push_back(column);
         columns.push_back(GetSchemaColumnFromOptimizerColumn(column));
 
         expression::AbstractExpression *expr =
-          ConvertOpExpressionToAbstractExpression(op_expr->Children()[0]);
+          ConvertToAbstractExpression(op_expr->Children()[0]);
 
         target_list.push_back({out_col_id, expr});
         out_col_id++;
@@ -185,6 +208,7 @@ class OpToPlanTransformer : public OperatorVisitor {
     planner::ProjectInfo *project_info =
       new planner::ProjectInfo(std::move(target_list), {});
 
+    output_columns = proj_columns;
     output_plan = new planner::ProjectionPlan(project_info, project_schema);
     output_plan->AddChild(child_plan);
   }
@@ -195,9 +219,10 @@ class OpToPlanTransformer : public OperatorVisitor {
 
     VisitOpExpression(children[0]);
     planner::AbstractPlan *child_plan = output_plan;
+    left_columns = output_columns;
 
     expression::AbstractExpression *predicate =
-      ConvertOpExpressionToAbstractExpression(children[1]);
+      ConvertToAbstractExpression(children[1]);
 
     output_plan = new planner::SeqScanPlan(nullptr, predicate, {});
     output_plan->AddChild(child_plan);
@@ -223,16 +248,30 @@ class OpToPlanTransformer : public OperatorVisitor {
     current_children = prev_children;
   }
 
+  expression::AbstractExpression *ConvertToAbstractExpression(
+    std::shared_ptr<OpExpression> op)
+  {
+    return ConvertOpExpressionToAbstractExpression(op,
+                                                   left_columns,
+                                                   right_columns);
+  }
+
   planner::AbstractPlan *output_plan;
   std::vector<std::shared_ptr<OpExpression>> current_children;
+  std::vector<Column *> output_columns;
+  std::vector<Column *> left_columns;
+  std::vector<Column *> right_columns;
 };
 
 }
 
 expression::AbstractExpression *ConvertOpExpressionToAbstractExpression(
-  std::shared_ptr<OpExpression> op_expr)
+  std::shared_ptr<OpExpression> op_expr,
+  std::vector<Column *> left_columns,
+  std::vector<Column *> right_columns)
 {
-  ExprOpToAbstractExpressionTransformer transformer;
+  ExprOpToAbstractExpressionTransformer transformer(left_columns,
+                                                    right_columns);
   return transformer.ConvertOpExpression(op_expr);
 }
 

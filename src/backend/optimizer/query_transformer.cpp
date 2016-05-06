@@ -185,11 +185,14 @@ OperatorExpression *QueryTransformer::ConvertOpExpr(OpExpr *expr) {
     return nullptr;
   }
 
+  // Figure out output type
+  ValueType type = bridge::TupleTransformer::GetValueType(expr->opresulttype);
+
   std::vector<QueryExpression* > ptr_args;
   for (auto& e : args) {
     ptr_args.push_back(e.release());
   }
-  return new OperatorExpression(func_meta.exprtype, ptr_args);
+  return new OperatorExpression(func_meta.exprtype, type, ptr_args);
 }
 
 QueryExpression *QueryTransformer::ConvertPostgresExpression(

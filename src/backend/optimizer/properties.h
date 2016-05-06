@@ -22,6 +22,8 @@ class PropertyColumns : public Property {
  public:
   PropertyColumns(std::vector<Column *> columns);
 
+  PropertyType Type() const override;
+
  private:
   std::vector<Column *> columns;
 };
@@ -30,6 +32,8 @@ class PropertySort : public Property {
  public:
   PropertySort(std::vector<Column *> sort_columns,
                std::vector<bool> sort_ascending);
+
+  PropertyType Type() const override;
 
  private:
   std::vector<Column *> sort_columns;

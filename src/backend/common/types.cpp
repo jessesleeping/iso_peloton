@@ -194,6 +194,8 @@ std::string ValueTypeToString(ValueType type) {
       return "INVALID";
     case VALUE_TYPE_NULL:
       return "NULL";
+    case VALUE_TYPE_BOOLEAN:
+      return "BOOLEAN";
     case VALUE_TYPE_TINYINT:
       return "TINYINT";
     case VALUE_TYPE_SMALLINT:
@@ -226,6 +228,8 @@ ValueType StringToValueType(std::string str) {
     return VALUE_TYPE_INVALID;
   } else if (str == "NULL") {
     return VALUE_TYPE_NULL;
+  } else if (str == "BOOLEAN") {
+    return VALUE_TYPE_BOOLEAN;
   } else if (str == "TINYINT") {
     return VALUE_TYPE_TINYINT;
   } else if (str == "SMALLINT") {

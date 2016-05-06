@@ -62,8 +62,9 @@ void Constant::accept(QueryNodeVisitor *v) const {
 //===--------------------------------------------------------------------===//
 OperatorExpression::OperatorExpression(
   peloton::ExpressionType type,
+  ValueType value_type,
   const std::vector<QueryExpression *>& args)
-  : type(type), args(args)
+  : type(type), value_type(value_type), args(args)
 {}
 
 ExpressionType OperatorExpression::GetExpressionType() const {

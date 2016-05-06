@@ -243,13 +243,14 @@ class ExprBoolOp : public OperatorNode<ExprBoolOp> {
 //===--------------------------------------------------------------------===//
 class ExprOp : public OperatorNode<ExprOp> {
  public:
-  static Operator make(ExpressionType type);
+  static Operator make(ExpressionType type, ValueType return_type);
 
   bool operator==(const BaseOperatorNode &r) override;
 
   hash_t Hash() const override;
 
   ExpressionType expr_type;
+  ValueType return_type;
 };
 
 //===--------------------------------------------------------------------===//

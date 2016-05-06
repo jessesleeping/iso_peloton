@@ -97,6 +97,7 @@ struct Constant : QueryExpression {
 //===--------------------------------------------------------------------===//
 struct OperatorExpression : QueryExpression {
   OperatorExpression(peloton::ExpressionType type,
+                     ValueType value_type,
                      const std::vector<QueryExpression *>& args);
 
   virtual ExpressionType GetExpressionType() const override;
@@ -104,6 +105,7 @@ struct OperatorExpression : QueryExpression {
   virtual void accept(QueryNodeVisitor *v) const override;
 
   peloton::ExpressionType type;
+  ValueType value_type;
   std::vector<QueryExpression *> args;
 };
 

@@ -24,6 +24,8 @@ enum class PropertyType {
 
 class Property {
  public:
+  virtual PropertyType Type() const = 0;
+
   virtual hash_t Hash() const = 0;
 
   virtual bool operator==(const Property &r) const = 0;

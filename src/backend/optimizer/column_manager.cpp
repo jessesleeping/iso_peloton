@@ -47,6 +47,14 @@ Column *ColumnManager::AddBaseColumn(ValueType type,
                                      oid_t base_table,
                                      oid_t column_index)
 {
+  LOG_TRACE("Adding base column: %s, type %s, size %d, inlined %s, "
+            "table %lu, col %lu",
+            name.c_str(),
+            ValueTypeToString(type).c_str(),
+            size,
+            inlined ? "yes" : "no",
+            base_table,
+            column_index);
   Column *col = new TableColumn(next_column_id++,
                                 type,
                                 size,
@@ -67,6 +75,11 @@ Column *ColumnManager::AddExprColumn(ValueType type,
                                      std::string name,
                                      bool inlined)
 {
+  LOG_TRACE("Adding expr column: %s, type %s, size %d, inlined %s",
+            name.c_str(),
+            ValueTypeToString(type).c_str(),
+            size,
+            inlined ? "yes" : "no");
   Column *col = new ExprColumn(next_column_id++,
                                type,
                                size,

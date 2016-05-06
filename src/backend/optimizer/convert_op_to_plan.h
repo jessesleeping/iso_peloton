@@ -22,7 +22,9 @@ namespace peloton {
 namespace optimizer {
 
 expression::AbstractExpression *ConvertOpExpressionToAbstractExpression(
-  std::shared_ptr<OpExpression> op_expr);
+  std::shared_ptr<OpExpression> op_expr,
+  std::vector<Column *> left_columns,
+  std::vector<Column *> right_columns);
 
 planner::AbstractPlan *ConvertOpExpressionToPlan(
   std::shared_ptr<OpExpression> plan);

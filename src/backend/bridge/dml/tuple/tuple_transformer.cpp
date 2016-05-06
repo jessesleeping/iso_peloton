@@ -39,6 +39,10 @@ ValueType TupleTransformer::GetValueType(Oid atttypid) {
   ValueType value_type;
 
   switch (atttypid) {
+    case POSTGRES_VALUE_TYPE_BOOLEAN: {
+      value_type = VALUE_TYPE_BOOLEAN;
+      break;
+    }
     case POSTGRES_VALUE_TYPE_SMALLINT: {
       value_type = VALUE_TYPE_SMALLINT;
     } break;

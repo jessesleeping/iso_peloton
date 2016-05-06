@@ -302,9 +302,10 @@ hash_t ExprBoolOp::Hash() const {
 //===--------------------------------------------------------------------===//
 // Operation (e.g. +, -, string functions)
 //===--------------------------------------------------------------------===//
-Operator ExprOp::make(ExpressionType type) {
+Operator ExprOp::make(ExpressionType type, ValueType return_type) {
   ExprOp *op = new ExprOp;
   op->expr_type = type;
+  op->return_type = return_type;
   return Operator(op);
 }
 
@@ -312,12 +313,14 @@ bool ExprOp::operator==(const BaseOperatorNode &node) {
   if (node.type() != OpType::Op) return false;
   const ExprOp &r = *static_cast<const ExprOp *>(&node);
   if (expr_type != r.expr_type) return false;
+  if (return_type != r.return_type) return false;
   return true;
 }
 
 hash_t ExprOp::Hash() const {
   hash_t hash = BaseOperatorNode::Hash();
   hash = util::CombineHashes(hash, util::Hash<ExpressionType>(&expr_type));
+  hash = util::CombineHashes(hash, util::Hash<ValueType>(&return_type));
   return hash;
 }
 

@@ -40,8 +40,10 @@ void QueryNodePrinter::visit(const Constant *op) {
 }
 
 void QueryNodePrinter::visit(const OperatorExpression* op) {
+  printf("print type %d\n", op->value_type);
   push_header("OperatorExpression, type: " +
-              ExpressionTypeToString(op->type));
+              ExpressionTypeToString(op->type) +
+              ", return_type: " + ValueTypeToString(op->value_type));
   for (QueryExpression *e : op->args) {
     e->accept(this);
     append_line();

@@ -58,13 +58,10 @@ class QueryToOpTransformer : public QueryNodeVisitor {
   }
 
   void visit(const Variable *op) override {
-    storage::DataTable *data_table = static_cast<storage::DataTable *>(
-      catalog::Manager::GetInstance().GetTableWithOid(
-        bridge::Bridge::GetCurrentDatabaseOid(), op->base_table_oid));
     catalog::Column schema_col = op->column;
 
-    oid_t table_oid = data_table->GetOid();
-    oid_t col_id = schema_col.GetOffset();
+    oid_t table_oid = op->base_table_oid;
+    oid_t col_id = op->column_index;
     assert(col_id != INVALID_OID);
 
     Column *col = manager.LookupColumn(table_oid, col_id);
@@ -78,10 +75,16 @@ class QueryToOpTransformer : public QueryNodeVisitor {
     }
 
     output_expr = std::make_shared<OpExpression>(ExprVariable::make(col));
+    output_type = col->Type();
+    output_size = GetTypeSize(output_type);
+    output_inlined = col->Inlined();
   }
 
   void visit(const Constant *op) override {
     output_expr = std::make_shared<OpExpression>(ExprConstant::make(op->value));
+    output_type = op->value.GetValueType();
+    output_size = GetTypeSize(output_type);
+    output_inlined = op->value.GetSourceInlined();
   }
 
   void visit(const OperatorExpression *op) override {
@@ -89,12 +92,24 @@ class QueryToOpTransformer : public QueryNodeVisitor {
     if (IsCompareOp(op->type)) {
       expr = std::make_shared<OpExpression>(ExprCompare::make(op->type));
     } else {
-      expr = std::make_shared<OpExpression>(ExprOp::make(op->type));
+      expr = std::make_shared<OpExpression>(ExprOp::make(op->type,
+                                                         op->value_type));
     }
 
     for (QueryExpression *arg : op->args) {
       arg->accept(this);
       expr->PushChild(output_expr);
+    }
+
+    if (IsCompareOp(op->type)) {
+      output_type = VALUE_TYPE_BOOLEAN;
+      output_size = GetTypeSize(VALUE_TYPE_BOOLEAN);
+      output_inlined = true;
+    } else {
+      output_type = op->value_type;
+      output_size = GetTypeSize(output_type);
+      // TODO(abpoms): how can this be determined?
+      output_inlined = true;
     }
 
     output_expr = expr;
@@ -110,6 +125,9 @@ class QueryToOpTransformer : public QueryNodeVisitor {
     }
 
     output_expr = expr;
+    output_type = VALUE_TYPE_BOOLEAN;
+    output_size = GetTypeSize(VALUE_TYPE_BOOLEAN);
+    output_inlined = true;
   }
 
   void visit(const OrOperator *op) override {
@@ -122,6 +140,9 @@ class QueryToOpTransformer : public QueryNodeVisitor {
     }
 
     output_expr = expr;
+    output_type = VALUE_TYPE_BOOLEAN;
+    output_size = GetTypeSize(VALUE_TYPE_BOOLEAN);
+    output_inlined = true;
   }
 
   void visit(const NotOperator *op) override {
@@ -133,6 +154,9 @@ class QueryToOpTransformer : public QueryNodeVisitor {
     expr->PushChild(output_expr);
 
     output_expr = expr;
+    output_type = VALUE_TYPE_BOOLEAN;
+    output_size = GetTypeSize(VALUE_TYPE_BOOLEAN);
+    output_inlined = true;
   }
 
   void visit(const Attribute *op) override {
@@ -140,8 +164,14 @@ class QueryToOpTransformer : public QueryNodeVisitor {
 
     // TODO(abpoms): actually figure out what the type should be by deriving
     // it from the expression tree
+    if (output_size == 0) {
+      output_size = std::pow(2, 16);
+    }
     Column *col =
-      manager.AddExprColumn(VALUE_TYPE_NULL, 0, op->name, true);
+      manager.AddExprColumn(output_type,
+                            output_size,
+                            op->name,
+                            output_inlined);
     auto expr = std::make_shared<OpExpression>(ExprProjectColumn::make(col));
     expr->PushChild(output_expr);
 
@@ -244,6 +274,10 @@ class QueryToOpTransformer : public QueryNodeVisitor {
   ColumnManager &manager;
 
   std::shared_ptr<OpExpression> output_expr;
+  // For expr nodes
+  ValueType output_type;
+  int output_size;
+  bool output_inlined;
 };
 
 }
