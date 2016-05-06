@@ -146,6 +146,21 @@ void SelectToFilter::Transform(
 /// InnerJoinToInnerHashJoin
 InnerJoinToInnerHashJoin::InnerJoinToInnerHashJoin() {
   physical = true;
+
+  // Make three node types for pattern matching
+  std::shared_ptr<Pattern> left_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> right_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> predicate(std::make_shared<Pattern>(OpType::Leaf));
+
+  // Initialize a pattern for optimizer to match
+  match_pattern = std::make_shared<Pattern>(OpType::InnerJoin);
+
+  // Add node - we match join relation R and S as well as the predicate exp
+  match_pattern->AddChild(left_child);
+  match_pattern->AddChild(right_child);
+  match_pattern->AddChild(predicate);
+
+  return;
 }
 
 bool InnerJoinToInnerHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
@@ -176,6 +191,18 @@ void InnerJoinToInnerHashJoin::Transform(
 /// LeftJoinToLeftHashJoin
 LeftJoinToLeftHashJoin::LeftJoinToLeftHashJoin() {
   physical = true;
+
+  std::shared_ptr<Pattern> left_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> right_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> predicate(std::make_shared<Pattern>(OpType::Leaf));
+
+  match_pattern = std::make_shared<Pattern>(OpType::InnerJoin);
+
+  match_pattern->AddChild(left_child);
+  match_pattern->AddChild(right_child);
+  match_pattern->AddChild(predicate);
+
+  return;
 }
 
 bool LeftJoinToLeftHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
@@ -187,14 +214,35 @@ void LeftJoinToLeftHashJoin::Transform(
   std::shared_ptr<OpExpression> input,
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  auto result_plan = std::make_shared<OpExpression>(PhysicalLeftHashJoin::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 3);
+
+  result_plan->PushChild(children[0]);
+  result_plan->PushChild(children[1]);
+  result_plan->PushChild(children[2]);
+
+  transformed.push_back(result_plan);
+
+  return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// RightJoinToRightHashJoin
 RightJoinToRightHashJoin::RightJoinToRightHashJoin() {
   physical = true;
+
+  std::shared_ptr<Pattern> left_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> right_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> predicate(std::make_shared<Pattern>(OpType::Leaf));
+
+  match_pattern = std::make_shared<Pattern>(OpType::InnerJoin);
+
+  match_pattern->AddChild(left_child);
+  match_pattern->AddChild(right_child);
+  match_pattern->AddChild(predicate);
+
+  return;
 }
 
 bool RightJoinToRightHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
@@ -206,14 +254,35 @@ void RightJoinToRightHashJoin::Transform(
   std::shared_ptr<OpExpression> input,
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  auto result_plan = std::make_shared<OpExpression>(PhysicalRightHashJoin::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 3);
+
+  result_plan->PushChild(children[0]);
+  result_plan->PushChild(children[1]);
+  result_plan->PushChild(children[2]);
+
+  transformed.push_back(result_plan);
+
+  return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// OuterJoinToOuterHashJoin
 OuterJoinToOuterHashJoin::OuterJoinToOuterHashJoin() {
   physical = true;
+
+  std::shared_ptr<Pattern> left_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> right_child(std::make_shared<Pattern>(OpType::Leaf));
+  std::shared_ptr<Pattern> predicate(std::make_shared<Pattern>(OpType::Leaf));
+
+  match_pattern = std::make_shared<Pattern>(OpType::InnerJoin);
+
+  match_pattern->AddChild(left_child);
+  match_pattern->AddChild(right_child);
+  match_pattern->AddChild(predicate);
+
+  return;
 }
 
 bool OuterJoinToOuterHashJoin::Check(std::shared_ptr<OpExpression> plan) const {
@@ -225,8 +294,17 @@ void OuterJoinToOuterHashJoin::Transform(
   std::shared_ptr<OpExpression> input,
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  auto result_plan = std::make_shared<OpExpression>(PhysicalOuterHashJoin::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 3);
+
+  result_plan->PushChild(children[0]);
+  result_plan->PushChild(children[1]);
+  result_plan->PushChild(children[2]);
+
+  transformed.push_back(result_plan);
+
+  return;
 }
 
 } /* namespace optimizer */
