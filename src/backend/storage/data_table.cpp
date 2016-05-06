@@ -1045,6 +1045,9 @@ std::shared_ptr<storage::TileGroup> DataTable::GetSampleTileGroup() const {
 size_t DataTable::SampleRows(size_t sample_size) {
   LOG_INFO("Start a new sampling, size = %lu ", sample_size);
 
+  // This function should be mutual exclusive
+  sample_mutex.lock();
+
   if(samples_for_optimizer.size() != 0) {
     LOG_INFO("Previous sample size not 0. Clear! ");
 
@@ -1129,6 +1132,9 @@ size_t DataTable::SampleRows(size_t sample_size) {
     // abstracts out layout information
     samples_for_optimizer.push_back(ItemPointer{tile_group_id, row_offset_in_tile_group});
   }
+
+  // Also need to do this before early return
+  sample_mutex.unlock();
 
   return row_id_set.size();
 }
@@ -1307,6 +1313,10 @@ void DataTable::FillSampleTileGroup() {
  * the same layout as the original one
  *
  * NOTE: It is required that sample vector is not empty
+ *
+ * NOTE 2: This operation must guarantee no data contention happens
+ * which is achieved by using a lock to avoid multiple threads
+ * planning different queries conflict with each other
  */
 void DataTable::MaterializeSample() {
   // First check whether samples have already been taken or not
@@ -1315,6 +1325,9 @@ void DataTable::MaterializeSample() {
 
     return;
   }
+
+  // We do not lock this in its child function
+  sample_mutex.lock();
 
   // If there is an existing tile group, drop it to avoid memory leak
   if(sampled_tile_group_id != INVALID_OID) {
@@ -1335,6 +1348,8 @@ void DataTable::MaterializeSample() {
 
   // Copy actual data into the sample table
   FillSampleTileGroup();
+
+  sample_mutex.unlock();
 
   return;
 }

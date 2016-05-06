@@ -306,6 +306,10 @@ class DataTable : public AbstractTable {
   // The index of this list is the same as sample column ID
   std::map<oid_t, size_t> cardinality_map;
 
+  // We enforce mutual exclusion of sampling operation to avoid
+  // contention on data structures
+  std::mutex sample_mutex;
+
   ///////////////////////////////////////////////////////////////////
 
   // INDEXES
