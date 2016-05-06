@@ -1100,6 +1100,8 @@ size_t DataTable::SampleRows(size_t sample_size) {
     std::uniform_int_distribution<> distribution(0, total_tuple_number - 1);
 
     int iter_count = 0;
+    peloton::concurrency::TransactionManager &txn_mgr = \
+      peloton::concurrency::TransactionManagerFactory::GetInstance();
 
     // outer loop detect whether there are duplicates
     while((row_id_set.size() < sample_size) && \
@@ -1118,8 +1120,7 @@ size_t DataTable::SampleRows(size_t sample_size) {
 
         // According to txn manager, this tuple is visible to current txn
         // so we take it as the sample
-        if(peloton::concurrency::current_txn->\
-             IsVisible(header_p, random_row_id)) {
+        if(txn_mgr.IsVisible(header_p, random_row_id)) {
           row_id_set.insert(random_row_id);
         }
 
