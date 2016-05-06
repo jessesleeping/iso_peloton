@@ -157,8 +157,19 @@ void InnerJoinToInnerHashJoin::Transform(
   std::shared_ptr<OpExpression> input,
   std::vector<std::shared_ptr<OpExpression>> &transformed) const
 {
-  (void) input;
-  (void) transformed;
+  // first build an expression representing hash join
+  auto result_plan = std::make_shared<OpExpression>(PhysicalInnerHashJoin::make());
+  std::vector<std::shared_ptr<OpExpression>> children = input->Children();
+  assert(children.size() == 3);
+
+  // Then push all children into the child list of the new operator
+  result_plan->PushChild(children[0]);
+  result_plan->PushChild(children[1]);
+  result_plan->PushChild(children[2]);
+
+  transformed.push_back(result_plan);
+
+  return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
