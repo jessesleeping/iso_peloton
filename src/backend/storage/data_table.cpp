@@ -27,6 +27,7 @@
 #include "backend/storage/tile_group_header.h"
 #include "backend/storage/tile_group_factory.h"
 #include "backend/concurrency/transaction_manager_factory.h"
+#include "backend/concurrency/transaction_manager.h"
 
 //===--------------------------------------------------------------------===//
 // Configuration Variables
@@ -1106,7 +1107,21 @@ size_t DataTable::SampleRows(size_t sample_size) {
       // Inner loop generates random numbers and insert into
       // the ordered set
       for(size_t i = 0;i < sample_size;i++) {
-        row_id_set.insert(distribution(generator));
+        oid_t random_row_id = distribution(generator);
+        // This is the tile group ID inside the vector
+        oid_t tile_group_offset = random_row_id / tuples_per_tilegroup;
+        auto tile_group_p = GetTileGroup(tile_group_offset);
+
+        // We need this header to check whether tuple is visible to
+        // current thread
+        TileGroupHeader *header_p = tile_group_p->GetHeader();
+
+        // According to txn manager, this tuple is visible to current txn
+        // so we take it as the sample
+        if(peloton::concurrency::current_txn->\
+             IsVisible(header_p, random_row_id)) {
+          row_id_set.insert(random_row_id);
+        }
 
         // If we have taken enough number of samples
         if(row_id_set.size() >= sample_size) {
