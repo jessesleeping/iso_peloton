@@ -72,6 +72,58 @@ class SelectToFilter : public Rule {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+/// InnerJoinToInnerNLJoin
+class InnerJoinToInnerNLJoin : public Rule {
+ public:
+  InnerJoinToInnerNLJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// LeftJoinToLeftNLJoin
+class LeftJoinToLeftNLJoin : public Rule {
+ public:
+  LeftJoinToLeftNLJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// RightJoinToRightNLJoin
+class RightJoinToRightNLJoin : public Rule {
+ public:
+  RightJoinToRightNLJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// OuterJoinToOuterNLJoin
+class OuterJoinToOuterNLJoin : public Rule {
+ public:
+  OuterJoinToOuterNLJoin();
+
+  bool Check(std::shared_ptr<OpExpression> plan) const override;
+
+  void Transform(
+    std::shared_ptr<OpExpression> input,
+    std::vector<std::shared_ptr<OpExpression>> &transformed) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 /// InnerJoinToInnerHashJoin
 class InnerJoinToInnerHashJoin : public Rule {
  public:

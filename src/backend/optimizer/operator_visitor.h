@@ -38,6 +38,10 @@ class OperatorVisitor {
   virtual void visit(const PhysicalScan *);
   virtual void visit(const PhysicalComputeExprs *);
   virtual void visit(const PhysicalFilter *);
+  virtual void visit(const PhysicalInnerNLJoin *);
+  virtual void visit(const PhysicalLeftNLJoin *);
+  virtual void visit(const PhysicalRightNLJoin *);
+  virtual void visit(const PhysicalOuterNLJoin *);
   virtual void visit(const PhysicalInnerHashJoin *);
   virtual void visit(const PhysicalLeftHashJoin *);
   virtual void visit(const PhysicalRightHashJoin *);

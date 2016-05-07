@@ -58,6 +58,18 @@ void OperatorVisitor::visit(const PhysicalComputeExprs*) {
 void OperatorVisitor::visit(const PhysicalFilter*) {
 }
 
+void OperatorVisitor::visit(const PhysicalInnerNLJoin*) {
+}
+
+void OperatorVisitor::visit(const PhysicalLeftNLJoin*) {
+}
+
+void OperatorVisitor::visit(const PhysicalRightNLJoin*) {
+}
+
+void OperatorVisitor::visit(const PhysicalOuterNLJoin*) {
+}
+
 void OperatorVisitor::visit(const PhysicalInnerHashJoin*) {
 }
 

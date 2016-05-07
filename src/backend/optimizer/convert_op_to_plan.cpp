@@ -14,6 +14,7 @@
 #include "backend/optimizer/operator_visitor.h"
 
 #include "backend/planner/hash_join_plan.h"
+#include "backend/planner/nested_loop_join_plan.h"
 #include "backend/planner/seq_scan_plan.h"
 #include "backend/planner/projection_plan.h"
 
@@ -23,6 +24,25 @@ namespace peloton {
 namespace optimizer {
 
 namespace {
+
+std::tuple<oid_t, oid_t> FindRelativeIndex(
+  const std::vector<Column *> &left_columns,
+  const std::vector<Column *> &right_columns,
+  const Column *column)
+{
+  assert(!(left_columns.empty() && right_columns.empty()));
+  for (size_t i = 0; i < left_columns.size(); ++i) {
+    if (column->ID() == left_columns[i]->ID()) {
+      return std::make_tuple(0, i);
+    }
+  }
+  for (size_t i = 0; i < right_columns.size(); ++i) {
+    if (column->ID() == right_columns[i]->ID()) {
+      return std::make_tuple(1, i);
+    }
+  }
+  return std::make_tuple(INVALID_OID, INVALID_OID);
+}
 
 class ExprOpToAbstractExpressionTransformer : public OperatorVisitor {
  public:
@@ -43,20 +63,8 @@ class ExprOpToAbstractExpressionTransformer : public OperatorVisitor {
     assert(!(left_columns.empty() && right_columns.empty()));
     oid_t table_idx = INVALID_OID;
     oid_t column_idx = INVALID_OID;
-    for (size_t i = 0; i < left_columns.size(); ++i) {
-      if (var->column->ID() == left_columns[i]->ID()) {
-        table_idx = 0;
-        column_idx = i;
-        break;
-      }
-    }
-    for (size_t i = 0; i < right_columns.size(); ++i) {
-      if (var->column->ID() == right_columns[i]->ID()) {
-        table_idx = 1;
-        column_idx = i;
-        break;
-      }
-    }
+    std::tie(table_idx, column_idx) =
+      FindRelativeIndex(left_columns, right_columns, var->column);
     output_expr =
       expression::ExpressionUtil::TupleValueFactory(table_idx, column_idx);
   }
@@ -179,34 +187,23 @@ class OpToPlanTransformer : public OperatorVisitor {
     left_columns = output_columns;
 
     std::vector<Column *> proj_columns;
-    catalog::Schema *project_schema = nullptr;
-    planner::ProjectInfo::TargetList target_list;
+    std::vector<expression::AbstractExpression *> exprs;
     {
-      std::vector<catalog::Column> columns;
-      // Build target list for projection from the child ExprProjectList
-      oid_t out_col_id = 0;
       for (std::shared_ptr<OpExpression> op_expr : children[1]->Children()) {
         assert(op_expr->Op().type() == OpType::ProjectColumn);
         assert(op_expr->Children().size() == 1);
 
         const ExprProjectColumn *proj_col =
           op_expr->Op().as<ExprProjectColumn>();
-        Column *column = proj_col->column;
-        proj_columns.push_back(column);
-        columns.push_back(GetSchemaColumnFromOptimizerColumn(column));
+        proj_columns.push_back(proj_col->column);
 
-        expression::AbstractExpression *expr =
-          ConvertToAbstractExpression(op_expr->Children()[0]);
-
-        target_list.push_back({out_col_id, expr});
-        out_col_id++;
+        exprs.push_back(ConvertToAbstractExpression(op_expr->Children()[0]));
       }
-      project_schema = new catalog::Schema(columns);
     }
+    catalog::Schema *project_schema = BuildSchemaFromColumns(proj_columns);
 
     // Build projection info from target list
-    planner::ProjectInfo *project_info =
-      new planner::ProjectInfo(std::move(target_list), {});
+    planner::ProjectInfo *project_info = BuildProjectInfoFromExprs(exprs);
 
     output_columns = proj_columns;
     output_plan = new planner::ProjectionPlan(project_info, project_schema);
@@ -228,7 +225,56 @@ class OpToPlanTransformer : public OperatorVisitor {
     output_plan->AddChild(child_plan);
   }
 
+  void visit(const PhysicalInnerNLJoin *) override {
+    auto children = current_children;
+    assert(children.size() == 3);
+
+    VisitOpExpression(children[0]);
+    planner::AbstractPlan *left_child = output_plan;
+    left_columns = output_columns;
+
+    VisitOpExpression(children[1]);
+    planner::AbstractPlan *right_child = output_plan;
+    right_columns = output_columns;
+
+    expression::AbstractExpression *predicate =
+      ConvertToAbstractExpression(children[2]);
+
+    output_columns = ConcatLeftAndRightColumns();
+
+    catalog::Schema *project_schema = BuildSchemaFromColumns(output_columns);
+    planner::ProjectInfo *proj_info =
+      BuildProjectInfoFromColumns(output_columns);
+
+    output_plan = new planner::NestedLoopJoinPlan(
+      JOIN_TYPE_INNER, predicate, proj_info, project_schema, nullptr);
+    output_plan->AddChild(left_child);
+    output_plan->AddChild(right_child);
+  }
+
+  void visit(const PhysicalLeftNLJoin *) override {
+  }
+
+  void visit(const PhysicalRightNLJoin *) override {
+  }
+
+  void visit(const PhysicalOuterNLJoin *) override {
+  }
+
   void visit(const PhysicalInnerHashJoin *) override {
+    // auto children = current_children;
+    // assert(children.size() == 2);
+
+    // VisitOpExpression(children[0]);
+    // planner::AbstractPlan *lef_child = output_plan;
+    // left_columns = output_columns;
+
+    // VisitOpExpression(children[1]);
+    // planner::AbstractPlan *right_child = output_plan;
+    // right_columns = output_columns;
+
+    // planner::AbstractPlan *right_hash =
+    //   new planner::HashPlan();
   }
 
   void visit(const PhysicalLeftHashJoin *) override {
@@ -243,9 +289,13 @@ class OpToPlanTransformer : public OperatorVisitor {
  private:
   void VisitOpExpression(std::shared_ptr<OpExpression> op) {
     std::vector<std::shared_ptr<OpExpression>> prev_children = current_children;
+    auto prev_left_cols = left_columns;
+    auto prev_right_cols = right_columns;
     current_children = op->Children();
     op->Op().accept(this);
     current_children = prev_children;
+    left_columns = prev_left_cols;
+    right_columns = prev_right_cols;
   }
 
   expression::AbstractExpression *ConvertToAbstractExpression(
@@ -254,6 +304,49 @@ class OpToPlanTransformer : public OperatorVisitor {
     return ConvertOpExpressionToAbstractExpression(op,
                                                    left_columns,
                                                    right_columns);
+  }
+
+  catalog::Schema *BuildSchemaFromColumns(
+    std::vector<Column *> columns)
+  {
+    std::vector<catalog::Column> schema_columns;
+    for (Column *column : columns) {
+      schema_columns.push_back(GetSchemaColumnFromOptimizerColumn(column));
+    }
+    return new catalog::Schema(schema_columns);
+  }
+
+  planner::ProjectInfo *BuildProjectInfoFromColumns(
+    std::vector<Column *> columns)
+  {
+    planner::ProjectInfo::DirectMapList dm_list;
+    for (size_t col_id = 0; col_id < columns.size(); ++col_id) {
+      Column *column = columns[col_id];
+
+      oid_t table_idx = INVALID_OID;
+      oid_t column_idx = INVALID_OID;
+      std::tie(table_idx, column_idx) =
+        FindRelativeIndex(left_columns, right_columns, column);
+
+      dm_list.push_back({col_id, {table_idx, column_idx}});
+    }
+    return new planner::ProjectInfo({}, std::move(dm_list));
+  }
+
+  planner::ProjectInfo *BuildProjectInfoFromExprs(
+    std::vector<expression::AbstractExpression *> exprs)
+  {
+    planner::ProjectInfo::TargetList target_list;
+    for (size_t col_id = 0; col_id < exprs.size(); ++col_id) {
+      target_list.push_back({col_id, exprs[col_id]});
+    }
+    return new planner::ProjectInfo(std::move(target_list), {});
+  }
+
+  std::vector<Column *> ConcatLeftAndRightColumns() {
+    std::vector<Column *> columns = left_columns;
+    columns.insert(columns.end(), right_columns.begin(), right_columns.end());
+    return columns;
   }
 
   planner::AbstractPlan *output_plan;

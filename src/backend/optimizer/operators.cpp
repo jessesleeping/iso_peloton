@@ -176,6 +176,42 @@ Operator PhysicalFilter::make() {
 }
 
 //===--------------------------------------------------------------------===//
+// InnerNLJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalInnerNLJoin::make()
+{
+  PhysicalInnerNLJoin *join = new PhysicalInnerNLJoin;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
+// LeftNLJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalLeftNLJoin::make()
+{
+  PhysicalLeftNLJoin *join = new PhysicalLeftNLJoin;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
+// RightNLJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalRightNLJoin::make()
+{
+  PhysicalRightNLJoin *join = new PhysicalRightNLJoin;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
+// OuterNLJoin
+//===--------------------------------------------------------------------===//
+Operator PhysicalOuterNLJoin::make()
+{
+  PhysicalOuterNLJoin *join = new PhysicalOuterNLJoin;
+  return Operator(join);
+}
+
+//===--------------------------------------------------------------------===//
 // InnerHashJoin
 //===--------------------------------------------------------------------===//
 Operator PhysicalInnerHashJoin::make()
@@ -409,6 +445,22 @@ void OperatorNode<PhysicalFilter>::accept(OperatorVisitor *v) const {
   v->visit((const PhysicalFilter *)this);
 }
 template<>
+void OperatorNode<PhysicalInnerNLJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalInnerNLJoin *)this);
+}
+template<>
+void OperatorNode<PhysicalLeftNLJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalLeftNLJoin *)this);
+}
+template<>
+void OperatorNode<PhysicalRightNLJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalRightNLJoin *)this);
+}
+template<>
+void OperatorNode<PhysicalOuterNLJoin>::accept(OperatorVisitor *v) const {
+  v->visit((const PhysicalOuterNLJoin *)this);
+}
+template<>
 void OperatorNode<PhysicalInnerHashJoin>::accept(OperatorVisitor *v) const {
   v->visit((const PhysicalInnerHashJoin *)this);
 }
@@ -480,6 +532,14 @@ std::string OperatorNode<PhysicalComputeExprs>::_name = "PhysicalComputeExprs";
 template<>
 std::string OperatorNode<PhysicalFilter>::_name = "PhysicalFilter";
 template<>
+std::string OperatorNode<PhysicalInnerNLJoin>::_name = "PhysicalInnerNLJoin";
+template<>
+std::string OperatorNode<PhysicalLeftNLJoin>::_name = "PhysicalLeftNLJoin";
+template<>
+std::string OperatorNode<PhysicalRightNLJoin>::_name = "PhysicalRightNLJoin";
+template<>
+std::string OperatorNode<PhysicalOuterNLJoin>::_name = "PhysicalOuterNLJoin";
+template<>
 std::string OperatorNode<PhysicalInnerHashJoin>::_name = "PhysicalInnerHashJoin";
 template<>
 std::string OperatorNode<PhysicalLeftHashJoin>::_name = "PhysicalLeftHashJoin";
@@ -528,6 +588,14 @@ template<>
 OpType OperatorNode<PhysicalComputeExprs>::_type = OpType::ComputeExprs;
 template<>
 OpType OperatorNode<PhysicalFilter>::_type = OpType::Filter;
+template<>
+OpType OperatorNode<PhysicalInnerNLJoin>::_type = OpType::InnerNLJoin;
+template<>
+OpType OperatorNode<PhysicalLeftNLJoin>::_type = OpType::LeftNLJoin;
+template<>
+OpType OperatorNode<PhysicalRightNLJoin>::_type = OpType::RightNLJoin;
+template<>
+OpType OperatorNode<PhysicalOuterNLJoin>::_type = OpType::OuterNLJoin;
 template<>
 OpType OperatorNode<PhysicalInnerHashJoin>::_type = OpType::InnerHashJoin;
 template<>
@@ -601,6 +669,22 @@ bool OperatorNode<PhysicalComputeExprs>::IsLogical() const {
 }
 template<>
 bool OperatorNode<PhysicalFilter>::IsLogical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalInnerNLJoin>::IsLogical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalLeftNLJoin>::IsLogical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalRightNLJoin>::IsLogical() const {
+  return false;
+}
+template<>
+bool OperatorNode<PhysicalOuterNLJoin>::IsLogical() const {
   return false;
 }
 template<>
@@ -698,6 +782,22 @@ bool OperatorNode<PhysicalComputeExprs>::IsPhysical() const {
 }
 template<>
 bool OperatorNode<PhysicalFilter>::IsPhysical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalInnerNLJoin>::IsPhysical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalLeftNLJoin>::IsPhysical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalRightNLJoin>::IsPhysical() const {
+  return true;
+}
+template<>
+bool OperatorNode<PhysicalOuterNLJoin>::IsPhysical() const {
   return true;
 }
 template<>

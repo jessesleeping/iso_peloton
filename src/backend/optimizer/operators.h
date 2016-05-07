@@ -145,6 +145,38 @@ class PhysicalFilter : public OperatorNode<PhysicalFilter> {
 };
 
 //===--------------------------------------------------------------------===//
+// InnerNLJoin
+//===--------------------------------------------------------------------===//
+class PhysicalInnerNLJoin : public OperatorNode<PhysicalInnerNLJoin> {
+ public:
+  static Operator make();
+};
+
+//===--------------------------------------------------------------------===//
+// LeftNLJoin
+//===--------------------------------------------------------------------===//
+class PhysicalLeftNLJoin : public OperatorNode<PhysicalLeftNLJoin> {
+ public:
+  static Operator make();
+};
+
+//===--------------------------------------------------------------------===//
+// RightNLJoin
+//===--------------------------------------------------------------------===//
+class PhysicalRightNLJoin : public OperatorNode<PhysicalRightNLJoin> {
+ public:
+  static Operator make();
+};
+
+//===--------------------------------------------------------------------===//
+// OuterNLJoin
+//===--------------------------------------------------------------------===//
+class PhysicalOuterNLJoin : public OperatorNode<PhysicalOuterNLJoin> {
+ public:
+  static Operator make();
+};
+
+//===--------------------------------------------------------------------===//
 // InnerHashJoin
 //===--------------------------------------------------------------------===//
 class PhysicalInnerHashJoin : public OperatorNode<PhysicalInnerHashJoin> {

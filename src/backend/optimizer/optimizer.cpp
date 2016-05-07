@@ -37,6 +37,11 @@ Optimizer::Optimizer() {
   rules.emplace_back(new GetToScan());
   rules.emplace_back(new SelectToFilter());
   rules.emplace_back(new ProjectToComputeExprs());
+  rules.emplace_back(new InnerJoinToInnerNLJoin());
+  rules.emplace_back(new LeftJoinToLeftNLJoin());
+  rules.emplace_back(new RightJoinToRightNLJoin());
+  rules.emplace_back(new OuterJoinToOuterNLJoin());
+  //rules.emplace_back(new InnerJoinToInnerHashJoin());
 }
 
 Optimizer &Optimizer::GetInstance() {
@@ -259,7 +264,6 @@ void Optimizer::ExploreExpression(std::shared_ptr<GroupExpression> gexpr) {
     }
   }
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// Rule application
