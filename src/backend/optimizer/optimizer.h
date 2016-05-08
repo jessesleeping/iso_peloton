@@ -29,8 +29,6 @@
 namespace peloton {
 namespace optimizer {
 
-class BindingIterator;
-class GroupBindingIterator;
 //===--------------------------------------------------------------------===//
 // Optimizer
 //===--------------------------------------------------------------------===//
@@ -56,7 +54,7 @@ class Optimizer {
    * to be used in performing optimization.
    *
    * tree: a peloton query tree representing a select query
-   * return: the group id of the root of the tree
+   * return: the root group expression for the inserted query
    */
   std::shared_ptr<GroupExpression> InsertQueryTree(
     std::shared_ptr<Select> tree);
@@ -71,7 +69,7 @@ class Optimizer {
     std::shared_ptr<Select> tree);
 
   /* OptimizerPlanToPlannerPlan - convert a tree of physical operators to
-   * a planner plan for execution.
+   *     a Peloton planner plan for execution.
    *
    * plan: an optimizer plan composed soley of physical operators
    * return: the corresponding planner plan
@@ -79,53 +77,76 @@ class Optimizer {
   planner::AbstractPlan *OptimizerPlanToPlannerPlan(
     std::shared_ptr<OpExpression> plan);
 
-  /* ChooseBestPlan - retrieve the lowest cost plan for the given requirements
-   * for the given group
+  /* ChooseBestPlan - retrieve the lowest cost tree of physical operators for
+   *     the given properties
    *
+   * id: the id of the group to produce the best physical
+   * requirements: the set of properties the produced physical operator tree
+   *     must satisfy
+   * return: the lowest cost tree of physical operators
    */
-  std::shared_ptr<OpExpression> ChooseBestPlan(GroupID id,
-                                               PropertySet requirements);
+  std::shared_ptr<OpExpression> ChooseBestPlan(
+    GroupID id,
+    PropertySet requirements);
 
-  /* OptimizeGroup - produce the best plan for the given operator tree which has
-   *  the specified physical requirements
+  /* OptimizeGroup - explore the space of plans for the group to produce the
+   *     most optimal physical operator tree and place it in the memo. After
+   *     invoking this method, a call to ChooseBestPlan with the same
+   *     PropertySet will retreive the optimal plan for the group.
    *
-   * root: a group to optimize
-   * requirements: the set of requirements the returned operato tree
-   *               must have
-   * return: the best physical operator tree for the given group
+   * id: the group to optimize
+   * requirements: the set of requirements the optimal physical operator tree
+   *     must fulfill
    */
-  void OptimizeGroup(GroupID id, PropertySet requirements);
+  void OptimizeGroup(
+    GroupID id,
+    PropertySet requirements);
 
-  /*
+  /* OptimizeExpression - produce all equivalent logical and physical
+   *     operators for this expression by applying transformation rules that
+   *     match the expression. If a new logical operator is produced as a result
+   *     of a transformation rule, that expression will also be optimized with
+   *     the same set of requirements. If a new physical operator is produced,
+   *     then the new expression will be costed.
    *
+   * gexpr: the group expression to optimize
+   * requirements: the set of requirements the most optimal expression produced
+   *     must fulfill
    */
-  void OptimizeExpression(std::shared_ptr<GroupExpression> gexpr,
-                          PropertySet requirements);
+  void OptimizeExpression(
+    std::shared_ptr<GroupExpression> gexpr,
+    PropertySet requirements);
 
-  void CostGroup(GroupID id, PropertySet requirements);
-
-  void CostExpression(std::shared_ptr<GroupExpression> gexpr,
-                      PropertySet requirements);
-
-
-  /* ExploreGroup - check the operator tree root for the given pattern
+  /* CostExpression - determine the cost of the provided group expression by
+   *     recursively optimizing and deriving statistics from child groups to be
+   *     used in producing the cost and statics of the expression.
    *
-   * root: an operator tree representing a query
+   * gexpr: the group to cost
+   */
+  void CostExpression(
+    std::shared_ptr<GroupExpression> gexpr);
+
+
+  /* ExploreGroup - exploration equivalent of OptimizeGroup.
+   *
+   * gexpr: the group to explore
    */
   void ExploreGroup(GroupID id);
 
-  /* ExploreExpression - check the operator tree root for the given pattern
+  /* ExploreExpression - similar to OptimizeExpression except that it does not
+   *     cost new physical operator expressions. The purpose of exploration is
+   *     to produce logical expressions for child groups that can be used to
+   *     match rules being applied on a parent group.
    *
-   * root: an operator tree representing a query
+   * gexpr: the group expression to apply rules to
    */
   void ExploreExpression(std::shared_ptr<GroupExpression> gexpr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Rule application
-  std::vector<std::shared_ptr<GroupExpression>>
-  TransformExpression(std::shared_ptr<GroupExpression> gexpr, const Rule &rule);
-
-  void ApplyRule(std::shared_ptr<GroupExpression> gexpr, const Rule &rule);
+  std::vector<std::shared_ptr<GroupExpression>> TransformExpression(
+    std::shared_ptr<GroupExpression> gexpr,
+    const Rule &rule);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Memo insertion
@@ -135,24 +156,17 @@ class Optimizer {
   std::vector<GroupID> MemoTransformedChildren(
     std::shared_ptr<OpExpression> expr);
 
-  GroupID MemoTransformedExpression(std::shared_ptr<OpExpression> expr);
+  GroupID MemoTransformedExpression(
+    std::shared_ptr<OpExpression> expr);
 
-  bool RecordTransformedExpression(std::shared_ptr<OpExpression> expr,
-                                   std::shared_ptr<GroupExpression> &gexpr);
+  bool RecordTransformedExpression(
+    std::shared_ptr<OpExpression> expr,
+    std::shared_ptr<GroupExpression> &gexpr);
 
-  bool RecordTransformedExpression(std::shared_ptr<OpExpression> expr,
-                                   std::shared_ptr<GroupExpression> &gexpr,
-                                   GroupID target_group);
-
-  /* TransformOperator - apply the given rule to the operator tree root to
-   * generate a logically equivalent operator tree or a physical implementation
-   * of the operator depending on the type of rule
-   *
-   * root: an operator tree
-   * rule: the rule to transform the given operator tree
-   * return: a new operator tree after rule application
-   */
-  Operator TransformOperator(Operator root, const Rule &rule);
+  bool RecordTransformedExpression(
+    std::shared_ptr<OpExpression> expr,
+    std::shared_ptr<GroupExpression> &gexpr,
+    GroupID target_group);
 
   Memo memo;
   ColumnManager column_manager;
