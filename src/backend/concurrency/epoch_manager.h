@@ -27,20 +27,22 @@ struct Epoch {
   std::atomic<int> ro_txn_ref_count_;
   std::atomic<int> rw_txn_ref_count_;
   cid_t max_cid_;
+  cid_t max_readonly_cid_;
 
   Epoch()
-    :ro_txn_ref_count_(0), rw_txn_ref_count_(0),max_cid_(0) {}
+    :ro_txn_ref_count_(0), rw_txn_ref_count_(0),max_cid_(0),max_readonly_cid_(0) {}
 
   void Init() {
     ro_txn_ref_count_ = 0;
     rw_txn_ref_count_ = 0;
     max_cid_ = 0;
+    max_readonly_cid_ = 0;
   }
 };
 
 /*
   Epoch queue layout:
-     current epoch               queue tail                reclaim tail
+     current epoch               readonly tail              gc tail
     /                           /                          /
     +--------+--------+--------+--------+--------+--------+--------+-------
     | head   | safety |  ....  |readonly| safety |  ....  |gc usage|  ....
@@ -48,10 +50,10 @@ struct Epoch {
     New                                                   Old
 
   Note:
-    1) Queue tail epoch and epochs which is older than it have 0 rw txn ref count
-    2) Reclaim tail epoch and epochs which is older than it have 0 ro txn ref count
-    3) Reclaim tail is at least 2 turns older than the queue tail epoch
-    4) Queue tail is at least 2 turns older than the head epoch
+    1) readonly tail epoch and epochs which is older than it have 0 rw txn ref count
+    2) gc tail epoch and epochs which is older than it have 0 ro && 0 rw txn ref count
+    3) gc tail <= readonly tail
+    4) readonly tail is at least 2 turns older than the head epoch
 */
 
 class EpochManager {
@@ -61,8 +63,8 @@ class EpochManager {
  public:
   EpochManager()
  : epoch_queue_(epoch_queue_size_),
-   queue_tail_(0), reclaim_tail_(0), current_epoch_(0),
-   queue_tail_token_(true), reclaim_tail_token_(true),
+   readonly_tail_(0), gc_tail_(0), current_epoch_(0),
+   readonly_tail_token_(true), gc_tail_token_(true),
     max_cid_ro_(READ_ONLY_START_CID), max_cid_gc_(0), finish_(false) {
     //ts_thread_.reset(new std::thread(&EpochManager::Start, this));
     //ts_thread_->detach();
@@ -75,8 +77,8 @@ class EpochManager {
 
     InitEpochQueue();
 
-    queue_tail_token_ = true;
-    reclaim_tail_token_ = true;
+    readonly_tail_token_ = true;
+    gc_tail_token_ = true;
     max_cid_ro_ = READ_ONLY_START_CID;
 
     finish_ = false;
@@ -89,15 +91,16 @@ class EpochManager {
   }
 
   size_t EnterReadOnlyEpoch(cid_t begin_cid) {
-    auto epoch = queue_tail_.load();
+    auto epoch = current_epoch_.load();
 
     size_t epoch_idx = epoch % epoch_queue_size_;
     epoch_queue_[epoch_idx].ro_txn_ref_count_++;
 
     // Set the max cid in the tuple
-    auto max_cid_ptr = &(epoch_queue_[epoch_idx].max_cid_);
-    AtomicMax(max_cid_ptr, begin_cid);
-
+    // auto max_cid_ptr = &(epoch_queue_[epoch_idx].max_cid_);
+    auto max_rcid_ptr = &(epoch_queue_[epoch_idx].max_readonly_cid_);
+    AtomicMax(max_rcid_ptr, begin_cid);
+    
     return epoch;
   }
 
@@ -115,16 +118,16 @@ class EpochManager {
   }
 
   void ExitReadOnlyEpoch(size_t epoch) {
-    PL_ASSERT(epoch > reclaim_tail_);
-    PL_ASSERT(epoch <= queue_tail_);
+    // PL_ASSERT(epoch > gc_tail_);
+    // PL_ASSERT(epoch <= readonly_tail_);
 
     auto epoch_idx = epoch % epoch_queue_size_;
     epoch_queue_[epoch_idx].ro_txn_ref_count_--;
   }
 
   void ExitEpoch(size_t epoch) {
-    PL_ASSERT(epoch > queue_tail_);
-    PL_ASSERT(epoch <= current_epoch_);
+    // PL_ASSERT(epoch > readonly_tail_);
+    // PL_ASSERT(epoch <= current_epoch_);
 
     auto epoch_idx = epoch % epoch_queue_size_;
     epoch_queue_[epoch_idx].rw_txn_ref_count_--;
@@ -132,8 +135,8 @@ class EpochManager {
 
   // assume we store epoch_store max_store previously
   cid_t GetMaxDeadTxnCid() {
-    IncreaseQueueTail();
-    IncreaseReclaimTail();
+    IncreaseReadOnlyTail();
+    IncreaseGCTail();
     return max_cid_gc_;
 
     // Note: Comment out the above three lines and uncomment the following
@@ -143,7 +146,7 @@ class EpochManager {
   }
 
   cid_t GetReadOnlyTxnCid() {
-    IncreaseQueueTail();
+    IncreaseReadOnlyTail();
     return max_cid_ro_;
   }
 
@@ -154,13 +157,13 @@ class EpochManager {
       std::this_thread::sleep_for(std::chrono::milliseconds(EPOCH_LENGTH));
 
       auto next_idx = (current_epoch_.load() + 1) % epoch_queue_size_;
-      auto tail_idx = reclaim_tail_.load() % epoch_queue_size_;
+      auto tail_idx = gc_tail_.load() % epoch_queue_size_;
 
 //      if (current_epoch_.load() % 10 == 0) {
 //        fprintf(stderr, "head = %d, queue_tail = %d, reclaim_tail = %d\n",
 //                (int)current_epoch_.load(),
-//                (int)queue_tail_.load(),
-//                (int)reclaim_tail_.load()
+//                (int)readonly_tail_.load(),
+//                (int)gc_tail_.load()
 //        );
 //        fprintf(stderr, "gc_ts = %d, ro_ts = %d\n", (int)max_cid_gc_, (int)max_cid_ro_);
 //      }
@@ -168,8 +171,8 @@ class EpochManager {
       if(next_idx  == tail_idx) {
         // overflow
         // in this case, just increase tail
-        IncreaseQueueTail();
-        IncreaseReclaimTail();
+        IncreaseReadOnlyTail();
+        IncreaseGCTail();
         continue;
       }
 
@@ -178,23 +181,23 @@ class EpochManager {
       epoch_queue_[next_idx].Init();
       current_epoch_++;
 
-      IncreaseQueueTail();
-      IncreaseReclaimTail();
+      IncreaseReadOnlyTail();
+      IncreaseGCTail();
     }
   }
 
-  void IncreaseReclaimTail() {
+  void IncreaseGCTail() {
     bool expect = true, desired = false;
-    if(!reclaim_tail_token_.compare_exchange_weak(expect, desired)){
+    if(!gc_tail_token_.compare_exchange_weak(expect, desired)){
       // someone now is increasing tail
       return;
     }
 
-    auto current = queue_tail_.load();
-    auto tail = reclaim_tail_.load();
+    auto current = readonly_tail_.load();
+    auto tail = gc_tail_.load();
 
     while(true) {
-      if(tail + safety_interval_ >= current) {
+      if(tail > current) {
         break;
       }
 
@@ -206,29 +209,28 @@ class EpochManager {
       }
 
       // save max cid
-      auto max = epoch_queue_[idx].max_cid_;
-      AtomicMax(&max_cid_gc_, max);
+      auto max_ = std::max(epoch_queue_[idx].max_cid_, epoch_queue_[idx].max_readonly_cid_);
+      AtomicMax(&max_cid_gc_, max_);
       tail++;
+      gc_tail_ = tail;
     }
-
-    reclaim_tail_ = tail;
 
     expect = false;
     desired = true;
 
-    reclaim_tail_token_.compare_exchange_weak(expect, desired);
+    gc_tail_token_.compare_exchange_weak(expect, desired);
     return;
   }
 
-  void IncreaseQueueTail() {
+  void IncreaseReadOnlyTail() {
     bool expect = true, desired = false;
-    if(!queue_tail_token_.compare_exchange_weak(expect, desired)){
+    if(!readonly_tail_token_.compare_exchange_weak(expect, desired)){
       // someone now is increasing tail
       return;
     }
 
     auto current = current_epoch_.load();
-    auto tail = queue_tail_.load();
+    auto tail = readonly_tail_.load();
 
     while(true) {
       if(tail + safety_interval_ >= current) {
@@ -243,17 +245,16 @@ class EpochManager {
       }
 
       // save max cid
-      auto max = epoch_queue_[idx].max_cid_;
-      AtomicMax(&max_cid_ro_, max);
+      auto max_ = epoch_queue_[idx].max_cid_;
+      AtomicMax(&max_cid_ro_, max_);
       tail++;
+      readonly_tail_ = tail;
     }
-
-    queue_tail_ = tail;
 
     expect = false;
     desired = true;
 
-    queue_tail_token_.compare_exchange_weak(expect, desired);
+    readonly_tail_token_.compare_exchange_weak(expect, desired);
     return;
   }
 
@@ -270,17 +271,17 @@ class EpochManager {
   }
 
 //  inline size_t GetReclaimTailIdx() {
-//    return (queue_tail_ - 2) % epoch_queue_size_;
+//    return (readonly_tail_ - 2) % epoch_queue_size_;
 //  }
 
   inline void InitEpochQueue() {
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i <= safety_interval_; ++i) {
       epoch_queue_[i].Init();
     }
 
-    current_epoch_ = 0;
-    queue_tail_ = 0;
-    reclaim_tail_ = 0;
+    current_epoch_ = safety_interval_;
+    readonly_tail_ = 0;
+    gc_tail_ = 0;
   }
 
 private:
@@ -289,11 +290,11 @@ private:
 
   // Epoch vector
   std::vector<Epoch> epoch_queue_;
-  std::atomic<size_t> queue_tail_;
-  std::atomic<size_t> reclaim_tail_;
+  std::atomic<size_t> readonly_tail_;
+  std::atomic<size_t> gc_tail_;
   std::atomic<size_t> current_epoch_;
-  std::atomic<bool> queue_tail_token_;
-  std::atomic<bool> reclaim_tail_token_;
+  std::atomic<bool> readonly_tail_token_;
+  std::atomic<bool> gc_tail_token_;
   cid_t max_cid_ro_;
   cid_t max_cid_gc_;
   bool finish_;
