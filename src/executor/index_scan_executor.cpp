@@ -66,7 +66,7 @@ bool IndexScanExecutor::DInit() {
   index_ = node.GetIndex();
   PL_ASSERT(index_ != nullptr);
 
-  index_predicate_ = node.GetIndexPredicate();
+  index_predicate_ = &(node.GetIndexPredicate());
 
   result_itr_ = START_OID;
   result_.clear();
@@ -159,7 +159,7 @@ bool IndexScanExecutor::ExecPrimaryIndexLookup() {
   } else {
     index_->Scan(values_, key_column_ids_, expr_types_,
                  SCAN_DIRECTION_TYPE_FORWARD, tuple_location_ptrs,
-                 &index_predicate_.GetConjunctionList()[0]);
+                 index_predicate_->GetConjunctionList()[0]);
 
     LOG_TRACE("tuple_location_ptrs:%lu", tuple_location_ptrs.size());
   }
@@ -348,7 +348,7 @@ bool IndexScanExecutor::ExecSecondaryIndexLookup() {
   } else {
     index_->Scan(values_, key_column_ids_, expr_types_,
                  SCAN_DIRECTION_TYPE_FORWARD, tuple_location_ptrs,
-                 &index_predicate_.GetConjunctionList()[0]);
+                 &index_predicate_->GetConjunctionList()[0]);
   }
 
   if (tuple_location_ptrs.size() == 0) {
@@ -755,7 +755,7 @@ void IndexScanExecutor::UpdatePredicate(
   }
 
   // Update the new value
-  index_predicate_.GetConjunctionListToSetup()[0]
+  index_predicate_->GetConjunctionListToSetup()[0]
       .SetTupleColumnValue(index_.get(), key_column_ids, values);
 
   LOG_TRACE("values_ size %lu", values_.size());

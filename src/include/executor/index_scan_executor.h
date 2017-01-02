@@ -115,7 +115,7 @@ class IndexScanExecutor : public AbstractScanExecutor {
   bool right_open_ = false;
 
   // copy from underlying plan
-  index::IndexScanPredicate index_predicate_;
+  index::IndexScanPredicate *index_predicate_;
 };
 
 }  // namespace executor
