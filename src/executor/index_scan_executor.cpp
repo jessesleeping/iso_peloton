@@ -705,11 +705,11 @@ void IndexScanExecutor::UpdatePredicate(
     const std::vector<oid_t> &column_ids,
     const std::vector<type::Value> &values) {
 
-  // Update index predicate
-  LOG_TRACE("values_ size %lu", values_.size());
-  for (unsigned int j = 0; j < values_.size(); ++j) {
-    LOG_TRACE("BEFORE values: %s", values_[j].GetInfo().c_str());
-  }
+//  // Update index predicate
+//  LOG_TRACE("values_ size %lu", values_.size());
+//  for (unsigned int j = 0; j < values_.size(); ++j) {
+//    LOG_TRACE("BEFORE values: %s", values_[j].GetInfo().c_str());
+//  }
 
   std::vector<oid_t> key_column_ids;
 
@@ -758,10 +758,10 @@ void IndexScanExecutor::UpdatePredicate(
   index_predicate_->GetConjunctionListToSetup()[0]
       .SetTupleColumnValue(index_.get(), key_column_ids, values);
 
-  LOG_TRACE("values_ size %lu", values_.size());
-  for (unsigned int j = 0; j < values_.size(); ++j) {
-    LOG_TRACE("AFTER values: %s", values_[j].GetInfo().c_str());
-  }
+//  LOG_TRACE("values_ size %lu", values_.size());
+//  for (unsigned int j = 0; j < values_.size(); ++j) {
+//    LOG_TRACE("AFTER values: %s", values_[j].GetInfo().c_str());
+//  }
 }
 
 void IndexScanExecutor::ResetState() {
