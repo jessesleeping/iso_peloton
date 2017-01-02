@@ -66,7 +66,7 @@ bool IndexScanExecutor::DInit() {
   index_ = node.GetIndex();
   PL_ASSERT(index_ != nullptr);
 
-  index_predicate_ = &(node.GetIndexPredicate());
+  index_predicate_ = const_cast<index::IndexScanPredicate *>(&(node.GetIndexPredicate()));
 
   result_itr_ = START_OID;
   result_.clear();
