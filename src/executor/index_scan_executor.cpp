@@ -159,7 +159,7 @@ bool IndexScanExecutor::ExecPrimaryIndexLookup() {
   } else {
     index_->Scan(values_, key_column_ids_, expr_types_,
                  SCAN_DIRECTION_TYPE_FORWARD, tuple_location_ptrs,
-                 &(*const_cast<const index::IndexScanPredicate*>(index_predicate_)).GetConjunctionList()[0]);
+                 &((const_cast<const index::IndexScanPredicate*>(index_predicate_))->GetConjunctionList()[0]));
 
     LOG_TRACE("tuple_location_ptrs:%lu", tuple_location_ptrs.size());
   }
